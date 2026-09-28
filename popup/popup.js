@@ -224,10 +224,11 @@ dropZone($('#new-group-zone'), 'new', async (tabIds) => {
 
 // ---- Drag and drop: drop tabs at a position inside a group's tab list ----
 
-// The group's tab ids after inserting `movingIds` before `beforeId` (null = at the end).
+// The group's tab ids after inserting `movingIds` before `beforeId` (null = at the end). A group's
+// pinned tabs are listed first but aren't in the group, so landing before one means the group's start.
 function reorderedIds(currentIds, movingIds, beforeId) {
   const rest = currentIds.filter((id) => !movingIds.includes(id));
-  rest.splice(beforeId == null ? rest.length : rest.indexOf(beforeId), 0, ...movingIds);
+  rest.splice(beforeId == null ? rest.length : Math.max(0, rest.indexOf(beforeId)), 0, ...movingIds);
   return rest;
 }
 
@@ -254,6 +255,7 @@ function tabDropPlan(list, groupId, y) {
 
 async function placeTabsInGroup(groupId, tabIds, fromGroupId, beforeId) {
   if (fromGroupId !== groupId) await groups.moveTabs(tabIds, groupId);
+  if (groups.homeUuid(groupId)) return; // a closed group reopens with just these tabs
   const tabs = await groups.groupTabs(groupId, windowId);
   const first = tabs[0].index;
   // Moving tabs one by one, left to right, into their final slots keeps each move inside the group.
@@ -291,8 +293,9 @@ function tabDropList(list, groupId) {
 let draggedGroup = null; // group id while a group card is being dragged
 let groupSpans = new Map(); // group id -> { first, count }: its tabs' place in the tab strip
 
-// The pinned tabs' card always comes first and can't be reordered, so it's left out.
-const groupCards = () => [...$('#groups').querySelectorAll('.card:not(.pinned)')];
+// The pinned tabs' card always comes first and closed groups' cards come last. Neither has a place
+// in the tab strip to reorder, so they're left out.
+const groupCards = () => [...$('#groups').querySelectorAll('.card:not(.pinned, .closed-group)')];
 
 function makeGroupDraggable(handle, card, groupId) {
   handle.draggable = true;
@@ -435,13 +438,15 @@ const savedMerge = mergeMode($('#view-saved'), groups.mergeSavedGroups);
 
 // ---- "This window" view ----
 
-// A card for a tab group, or for the window's pinned tabs when `group.id` is PINNED. The pinned
+// A card for a tab group, for the window's pinned tabs when `group.id` is PINNED, or for a group
+// the browser closed because all its tabs are pinned (group.id from groups.homeKey). The pinned
 // tabs' card works like a group's, except that its title and color are fixed and it stays first.
-// Tabs pinned from a group are only listed with the pinned tabs; the group's card counts them
-// (`pinnedCount`), since they're saved and closed with it. `homes` maps tab ids to their home group.
-function liveGroupCard(group, tabs, hex, { pinnedCount = 0, homes = {} } = {}) {
+// A tab pinned from a group is listed both there and in its group, first. `homes` maps tab ids to
+// their home group.
+function liveGroupCard(group, tabs, hex, { homes = {} } = {}) {
   const isPinned = group.id === PINNED;
-  const card = el('article', { className: isPinned ? 'card pinned' : 'card' });
+  const isClosed = !!groups.homeUuid(group.id);
+  const card = el('article', { className: isPinned ? 'card pinned' : isClosed ? 'card closed-group' : 'card' });
   card.style.setProperty('--c', hex);
   card.dataset.groupId = group.id;
   card.dataset.mergeId = group.id;
@@ -453,12 +458,14 @@ function liveGroupCard(group, tabs, hex, { pinnedCount = 0, homes = {} } = {}) {
         className: 'title',
         value: group.title ?? '',
         placeholder: 'Untitled group',
-        onchange: () => chrome.tabGroups.update(group.id, { title: title.value }),
+        onchange: () => run(() => groups.setGroupTitle(group.id, title.value)),
       });
-  const grip = isPinned ? pinMark() : el('span', { className: 'grip', textContent: '⠿', title: 'Drag to reorder' });
+  const grip = isPinned
+    ? pinMark()
+    : !isClosed && el('span', { className: 'grip', textContent: '⠿', title: 'Drag to reorder' });
   const list = el('ul', { className: 'tab-list' }, ...tabs.map((t) => tabRow(t, { pinnable: true, home: homes[t.id] })));
   tabDropList(list, group.id);
-  if (!isPinned) makeGroupDraggable(grip, card, group.id);
+  if (grip && !isPinned) makeGroupDraggable(grip, card, group.id);
 
   // Pinned tabs have no color picker: the pin takes the dot's place.
   const picker = !isPinned && colorPicker(hex, (color) => run(() => groups.setGroupColor(group.id, color)));
@@ -484,8 +491,9 @@ function liveGroupCard(group, tabs, hex, { pinnedCount = 0, homes = {} } = {}) {
 
   const { toggle, body, expand } = collapsible(
     `live:${isPinned ? groups.pinnedKey(windowId) : group.id}`,
-    plural(tabs.length, 'tab') + (pinnedCount ? ` + ${pinnedCount} pinned` : ''),
+    plural(tabs.length, 'tab'),
     picker,
+    isClosed && el('p', { className: 'meta', textContent: 'All its tabs are pinned. Unpin one, or drop a tab here, to reopen the group.' }),
     list,
     el(
       'div',
@@ -493,7 +501,9 @@ function liveGroupCard(group, tabs, hex, { pinnedCount = 0, homes = {} } = {}) {
       el('button', {
         className: 'btn',
         textContent: isPinned ? 'Unpin' : 'Ungroup',
-        title: isPinned ? 'Unpin these tabs, moving tabs pinned from a group back to it' : undefined,
+        title: isPinned
+          ? 'Unpin these tabs, moving tabs pinned from a group back to it'
+          : 'Ungroup these tabs. Pinned ones stay pinned and no longer go back to this group.',
         onclick: () => run(() => (isPinned ? groups.unpinTabs(tabs.map((t) => t.id)) : groups.ungroupGroup(group.id))),
       }),
       el('button', {
@@ -524,18 +534,19 @@ function liveGroupCard(group, tabs, hex, { pinnedCount = 0, homes = {} } = {}) {
     ),
   );
 
-  card.append(el('header', {}, liveMerge.on && liveMerge.checkbox(group.id), grip, dot, title, toggle), body);
+  card.append(el('header', {}, liveMerge.on && !isClosed && liveMerge.checkbox(group.id), grip, dot, title, toggle), body);
   return card;
 }
 
 async function renderCurrent() {
-  const [tabs, liveGroups, custom, uuids, homes] = await Promise.all([
+  const [tabs, allGroups, custom, uuids, homes] = await Promise.all([
     chrome.tabs.query({ windowId }),
-    chrome.tabGroups.query({ windowId }),
+    chrome.tabGroups.query({}),
     store.getCustomColors(),
     store.getGroupUuids(),
     store.getPinnedHomes(),
   ]);
+  const liveGroups = allGroups.filter((g) => g.windowId === windowId);
 
   // Show groups in tab-strip order.
   tabs.sort((a, b) => a.index - b.index);
@@ -550,16 +561,33 @@ async function renderCurrent() {
   // Pinned tabs always sit at the start of the tab strip, so their card comes first.
   const pinned = tabs.filter((t) => t.pinned);
   const pinnedCard = pinned.length > 0 && liveGroupCard({ id: PINNED, windowId }, pinned, groups.PINNED_COLOR, { homes });
-  const homeCounts = new Map();
-  for (const t of pinned) if (homes[t.id]) homeCounts.set(homes[t.id].uuid, (homeCounts.get(homes[t.id].uuid) ?? 0) + 1);
+  // Each group's pinned tabs, by group UUID. Groups that aren't open anywhere get a card of their own.
+  const pinnedByHome = new Map();
+  for (const t of pinned) {
+    const home = homes[t.id];
+    if (!home) continue;
+    if (!pinnedByHome.has(home.uuid)) pinnedByHome.set(home.uuid, { home, tabs: [] });
+    pinnedByHome.get(home.uuid).tabs.push(t);
+  }
+  const openUuids = new Set(allGroups.map((g) => uuids[g.id]));
+  const closedHomes = [...pinnedByHome.values()].filter(({ home }) => !openUuids.has(home.uuid));
+  const groupCardsNow = [
+    ...liveGroups.map((g) =>
+      liveGroupCard(
+        g,
+        [...(pinnedByHome.get(uuids[g.id])?.tabs ?? []), ...tabs.filter((t) => t.groupId === g.id)],
+        groups.groupHex(g, custom),
+        { homes },
+      ),
+    ),
+    ...closedHomes.map(({ home, tabs: own }) =>
+      liveGroupCard({ id: groups.homeKey(home.uuid), title: home.title }, own, home.color, { homes }),
+    ),
+  ];
   $('#groups').replaceChildren(
     ...[pinnedCard].filter(Boolean),
-    ...(liveGroups.length
-      ? liveGroups.map((g) =>
-          liveGroupCard(g, tabs.filter((t) => t.groupId === g.id), groups.groupHex(g, custom), {
-            pinnedCount: homeCounts.get(uuids[g.id]) ?? 0,
-          }),
-        )
+    ...(groupCardsNow.length
+      ? groupCardsNow
       : [el('p', { className: 'empty', textContent: 'No groups yet. Drag a tab from below to start one.' })]),
   );
   $('#pin-zone').classList.toggle('available', !pinnedCard);

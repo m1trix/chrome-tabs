@@ -45,13 +45,15 @@ groups to reopen later, even in the other browser.
 The window's pinned tabs are shown as a group of their own, always first. It is marked with 📌 and can be collapsed,
 merged, saved, exported and restored like any other group. Its title can't be changed, and it's always grey.
 
-- Every tab in a group has a 📌 button that pins it. The browser can't keep a pinned tab in a group, so the tab
-  moves to the pinned tabs, but the extension remembers where it came from. Unpinning it, with its 📌 button,
-  **Unpin**, or from the tab strip, moves it back to the end of that group. If the group has closed in the
-  meantime, it's recreated with its name and color.
-- The group's card counts the tabs pinned from it ("3 tabs + 1 pinned"). They're saved, exported and closed
-  (**Save & close**) along with the group, and restored pinned. **Ungroup** leaves them pinned, and they no longer
-  go back to the group.
+- Every tab in a group has a 📌 button that pins it. The browser can't keep a pinned tab in a group, but the
+  extension remembers where it came from, so the popup lists the tab both with the pinned tabs and in its group
+  (first, marked 📌). Unpinning it, with its 📌 button, **Unpin**, or from the tab strip, moves it back to the end
+  of that group.
+- If all of a group's tabs are pinned, the browser closes the group, but its card stays (with a dashed border) and
+  can still be renamed, recolored, saved and exported. Unpinning one of its tabs, or dropping a tab on it, reopens
+  the group with its name and color.
+- A group's pinned tabs are saved, exported and closed (**Save & close**) along with it, and restored pinned.
+  **Ungroup** leaves them pinned, and they no longer go back to the group.
 - Dropping a tab on the pinned tabs pins it the same way. Dropping a pinned tab on a group or on "Ungrouped tabs"
   moves it there instead of back to its group. When the window has no pinned tabs, a "Drop here to pin" zone
   appears while you drag.

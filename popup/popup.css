@@ -166,3 +166,7 @@ body.dragging #new-group-zone, body.dragging #pin-zone.available { display: bloc
 }
 .tab-list li.insert-before::before { top: -1px; }
 .tab-list li.insert-after::after { bottom: -1px; }
+
+/* A group the browser closed because all its tabs are pinned */
+.card.closed-group { border-style: dashed; }
+.card p.meta { margin: 4px 0; }
