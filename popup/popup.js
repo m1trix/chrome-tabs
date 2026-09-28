@@ -90,7 +90,7 @@ function favicon(url) {
 function tabRow(tab, { selectable = false } = {}) {
   const label = el('span', { className: 'tab-title', textContent: tab.title || tab.url, title: tab.url });
   const row = selectable
-    ? el('label', { className: 'tab-row' }, el('input', { type: 'checkbox', value: tab.id, onchange: updateNewGroupButton }), favicon(tab.favIconUrl), label)
+    ? el('label', { className: 'tab-row' }, el('input', { type: 'checkbox', value: tab.id }), favicon(tab.favIconUrl), label)
     : el('button', { className: 'tab-row', onclick: () => chrome.tabs.update(tab.id, { active: true }) }, favicon(tab.favIconUrl), label);
   makeDraggable(row, tab);
   const close = el('button', {
@@ -188,7 +188,11 @@ function dropZone(node, groupId, onDrop) {
 }
 
 dropZone($('#ungrouped-zone'), NONE, (tabIds) => chrome.tabs.ungroup(tabIds));
-dropZone($('#new-group-zone'), 'new', (tabIds) => groups.createGroup(tabIds, { windowId }));
+// A new group starts untitled, so its name field gets focus once it's rendered.
+let focusGroupId = null;
+dropZone($('#new-group-zone'), 'new', async (tabIds) => {
+  focusGroupId = await groups.createGroup(tabIds, { windowId });
+});
 
 // ---- Drag and drop: drop tabs at a position inside a group's tab list ----
 
@@ -400,13 +404,6 @@ function liveGroupCard(group, tabs, hex) {
   return card;
 }
 
-let newGroupColor = null;
-$('#new-group-color').replaceWith(colorPicker(null, (hex) => (newGroupColor = hex)));
-
-function updateNewGroupButton() {
-  $('#new-group button[type=submit]').disabled = !document.querySelector('#ungrouped input:checked');
-}
-
 async function renderCurrent() {
   const [tabs, liveGroups, custom] = await Promise.all([
     chrome.tabs.query({ windowId }),
@@ -428,7 +425,7 @@ async function renderCurrent() {
   $('#groups').replaceChildren(
     ...(liveGroups.length
       ? liveGroups.map((g) => liveGroupCard(g, tabs.filter((t) => t.groupId === g.id), groups.groupHex(g, custom)))
-      : [el('p', { className: 'empty', textContent: 'No groups yet. Drag a tab to start one, or select tabs below.' })]),
+      : [el('p', { className: 'empty', textContent: 'No groups yet. Drag a tab from below to start one.' })]),
   );
 
   const ungrouped = tabs.filter((t) => t.groupId === NONE && !t.pinned);
@@ -437,8 +434,11 @@ async function renderCurrent() {
       ? ungrouped.map((t) => tabRow(t, { selectable: true }))
       : [el('li', { className: 'empty', textContent: 'Every tab is in a group.' })]),
   );
-  $('#new-group').hidden = !ungrouped.length;
-  updateNewGroupButton();
+
+  if (focusGroupId != null) {
+    $(`.card[data-group-id="${focusGroupId}"] .title`)?.focus();
+    focusGroupId = null;
+  }
 }
 
 $('#dedupe').onclick = () =>
@@ -451,16 +451,6 @@ $('#dedupe').onclick = () =>
 for (const button of document.querySelectorAll('.import')) {
   button.onclick = () => chrome.tabs.create({ url: chrome.runtime.getURL('import/import.html') });
 }
-
-$('#new-group').onsubmit = (e) => {
-  e.preventDefault();
-  const tabIds = [...document.querySelectorAll('#ungrouped input:checked')].map((i) => Number(i.value));
-  const title = $('#new-group-title').value.trim();
-  run(async () => {
-    await groups.createGroup(tabIds, { title, color: newGroupColor, windowId });
-    $('#new-group-title').value = '';
-  });
-};
 
 // ---- "Saved" view ----
 

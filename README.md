@@ -5,9 +5,9 @@ coloring them, and saving groups to reopen later.
 
 ## Features
 
-- **Group tabs** – select ungrouped tabs in the popup and group them with a name and color.
-- **Drag and drop** – in the popup, drag tabs onto a group to add them, onto “Ungrouped tabs” to remove them,
-  or onto the “new group” zone that appears while dragging. Dragging a checked tab moves every checked tab.
+- **Drag and drop** – in the popup, drag an ungrouped tab onto the “new group” zone that appears while dragging to
+  create a group (name and color it on its card), onto a group to add it, or onto “Ungrouped tabs” to remove it.
+  Tick several ungrouped tabs and drag one of them to move them all.
 - **Reorder tabs** – drag a tab between rows of a group's tab list to put it at that spot (works for tabs
   from the same group, another group, or ungrouped tabs). Dropping elsewhere on a group adds tabs at the end.
 - **Reorder groups** – drag a group by its ⠿ handle to move the whole group; the browser's tab strip follows.

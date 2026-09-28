@@ -55,10 +55,7 @@ h2 { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacin
 .btn.primary:hover { filter: brightness(1.08); }
 .btn:disabled { opacity: .5; cursor: default; filter: none; }
 .btn.danger { color: #d93025; }
-.text {
-  padding: 5px 8px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg);
-}
-.text:focus, .hex:focus, .title:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
+.hex:focus, .title:focus { outline: 2px solid var(--accent); outline-offset: -1px; }
 
 .card {
   margin-bottom: 8px; padding: 8px 10px;
@@ -109,9 +106,6 @@ button.dot:hover, button.dot[aria-expanded="true"] { box-shadow: 0 0 0 2px var(-
 .favicon { flex: none; width: 16px; height: 16px; }
 .tab-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-#new-group { display: flex; flex-direction: column; gap: 4px; margin-top: 8px; }
-#new-group .color-picker { --card: var(--bg); }
-#new-group button { align-self: flex-end; }
 
 #status {
   position: fixed; bottom: 10px; left: 50%; transform: translateX(-50%); margin: 0;
