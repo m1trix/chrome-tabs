@@ -6,6 +6,7 @@ import { downloadGroup } from '../lib/transfer.js';
 
 const $ = (sel) => document.querySelector(sel);
 const NONE = chrome.tabGroups.TAB_GROUP_ID_NONE;
+const { PINNED } = groups;
 const { id: windowId } = await chrome.windows.getCurrent();
 
 let statusTimer;
@@ -27,6 +28,12 @@ async function run(action) {
 }
 
 const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
+
+// Pinned tabs are marked with a pin wherever they're shown, so they can't be mistaken for a group
+// that just happens to be named "Pinned tabs".
+const PIN_MARK = '📌';
+const pinMark = () => el('span', { className: 'pin', textContent: PIN_MARK, title: 'Pinned tabs (not a tab group)' });
+const displayTitle = (title, pinned) => (pinned ? `${PIN_MARK} ${title}` : title);
 
 // ---- Color picker: nine native swatches plus a custom hex field ----
 
@@ -159,8 +166,9 @@ function makeDraggable(node, tab) {
   node.addEventListener('dragstart', (e) => {
     // Dragging a checked ungrouped tab carries every checked tab along with it.
     const checked = [...document.querySelectorAll('#ungrouped input:checked')].map((i) => Number(i.value));
-    const tabIds = tab.groupId === NONE && checked.includes(tab.id) ? checked : [tab.id];
-    dragged = { tabIds, groupId: tab.groupId };
+    const groupId = tab.pinned ? PINNED : tab.groupId;
+    const tabIds = groupId === NONE && checked.includes(tab.id) ? checked : [tab.id];
+    dragged = { tabIds, groupId };
     e.dataTransfer.effectAllowed = 'move';
     e.dataTransfer.setData('text/plain', tab.url ?? '');
     // Changing layout synchronously in dragstart can cancel the drag in Chrome.
@@ -190,7 +198,9 @@ function dropZone(node, groupId, onDrop) {
   });
 }
 
-dropZone($('#ungrouped-zone'), NONE, (tabIds) => chrome.tabs.ungroup(tabIds));
+dropZone($('#ungrouped-zone'), NONE, (tabIds) => groups.moveTabs(tabIds, NONE));
+// Shown while dragging when the window has no pinned tabs, so there's no pinned card to drop on.
+dropZone($('#pin-zone'), PINNED, (tabIds) => groups.moveTabs(tabIds, PINNED));
 // A new group starts untitled, so its name field gets focus once it's rendered.
 let focusGroupId = null;
 dropZone($('#new-group-zone'), 'new', async (tabIds) => {
@@ -228,8 +238,8 @@ function tabDropPlan(list, groupId, y) {
 }
 
 async function placeTabsInGroup(groupId, tabIds, fromGroupId, beforeId) {
-  if (fromGroupId !== groupId) await chrome.tabs.group({ groupId, tabIds });
-  const tabs = (await chrome.tabs.query({ groupId })).sort((a, b) => a.index - b.index);
+  if (fromGroupId !== groupId) await groups.moveTabs(tabIds, groupId);
+  const tabs = await groups.groupTabs(groupId, windowId);
   const first = tabs[0].index;
   // Moving tabs one by one, left to right, into their final slots keeps each move inside the group.
   const order = reorderedIds(tabs.map((t) => t.id), tabIds, beforeId);
@@ -266,7 +276,8 @@ function tabDropList(list, groupId) {
 let draggedGroup = null; // group id while a group card is being dragged
 let groupSpans = new Map(); // group id -> { first, count }: its tabs' place in the tab strip
 
-const groupCards = () => [...$('#groups').querySelectorAll('.card')];
+// The pinned tabs' card always comes first and can't be reordered, so it's left out.
+const groupCards = () => [...$('#groups').querySelectorAll('.card:not(.pinned)')];
 
 function makeGroupDraggable(handle, card, groupId) {
   handle.draggable = true;
@@ -404,32 +415,38 @@ function mergeMode(view, onMerge) {
   return m;
 }
 
-const liveMerge = mergeMode($('#view-current'), groups.mergeGroups);
+const liveMerge = mergeMode($('#view-current'), (targetId, sourceIds) => groups.mergeGroups(targetId, sourceIds, windowId));
 const savedMerge = mergeMode($('#view-saved'), groups.mergeSavedGroups);
 
 // ---- "This window" view ----
 
+// A card for a tab group, or for the window's pinned tabs when `group.id` is PINNED. The pinned
+// tabs' card works like a group's, except that its title and color are fixed and it stays first.
 function liveGroupCard(group, tabs, hex) {
-  const card = el('article', { className: 'card' });
+  const isPinned = group.id === PINNED;
+  const card = el('article', { className: isPinned ? 'card pinned' : 'card' });
   card.style.setProperty('--c', hex);
   card.dataset.groupId = group.id;
   card.dataset.mergeId = group.id;
-  dropZone(card, group.id, (tabIds) => chrome.tabs.group({ groupId: group.id, tabIds }));
+  dropZone(card, group.id, (tabIds) => groups.moveTabs(tabIds, group.id));
 
-  const title = el('input', {
-    className: 'title',
-    value: group.title ?? '',
-    placeholder: 'Untitled group',
-    onchange: () => chrome.tabGroups.update(group.id, { title: title.value }),
-  });
-  const grip = el('span', { className: 'grip', textContent: '⠿', title: 'Drag to reorder' });
+  const title = isPinned
+    ? el('h3', { className: 'title', textContent: groups.PINNED_TITLE })
+    : el('input', {
+        className: 'title',
+        value: group.title ?? '',
+        placeholder: 'Untitled group',
+        onchange: () => chrome.tabGroups.update(group.id, { title: title.value }),
+      });
+  const grip = isPinned ? pinMark() : el('span', { className: 'grip', textContent: '⠿', title: 'Drag to reorder' });
   const list = el('ul', { className: 'tab-list' }, ...tabs.map((t) => tabRow(t)));
   tabDropList(list, group.id);
-  makeGroupDraggable(grip, card, group.id);
+  if (!isPinned) makeGroupDraggable(grip, card, group.id);
 
-  const picker = colorPicker(hex, (color) => run(() => groups.setGroupColor(group.id, color)));
-  picker.hidden = !pickerOpen.has(group.id);
-  const dot = el('button', {
+  // Pinned tabs have no color picker: the pin takes the dot's place.
+  const picker = !isPinned && colorPicker(hex, (color) => run(() => groups.setGroupColor(group.id, color)));
+  if (picker) picker.hidden = !pickerOpen.has(group.id);
+  const dot = !isPinned && el('button', {
     type: 'button',
     className: 'dot',
     title: 'Change color',
@@ -446,10 +463,10 @@ function liveGroupCard(group, tabs, hex) {
       dot.setAttribute('aria-expanded', !picker.hidden);
     },
   });
-  dot.setAttribute('aria-expanded', !picker.hidden);
+  if (dot) dot.setAttribute('aria-expanded', !picker.hidden);
 
   const { toggle, body, expand } = collapsible(
-    `live:${group.id}`,
+    `live:${isPinned ? groups.pinnedKey(windowId) : group.id}`,
     plural(tabs.length, 'tab'),
     picker,
     list,
@@ -458,14 +475,14 @@ function liveGroupCard(group, tabs, hex) {
       { className: 'actions' },
       el('button', {
         className: 'btn',
-        textContent: 'Ungroup',
-        onclick: () => run(() => chrome.tabs.ungroup(tabs.map((t) => t.id))),
+        textContent: isPinned ? 'Unpin' : 'Ungroup',
+        onclick: () => run(() => groups.moveTabs(tabs.map((t) => t.id), NONE)),
       }),
       el('button', {
         className: 'btn',
         textContent: 'Export',
         title: 'Download this group as a JSON file',
-        onclick: () => run(async () => downloadGroup((await groups.snapshotLiveGroup(group.id)).entry)),
+        onclick: () => run(async () => downloadGroup((await groups.snapshotLiveGroup(group.id, windowId)).entry)),
       }),
       el('button', {
         className: 'btn',
@@ -473,8 +490,8 @@ function liveGroupCard(group, tabs, hex) {
         title: 'Save this group so you can reopen it later',
         onclick: () =>
           run(async () => {
-            const { entry, replaced } = await groups.saveLiveGroup(group.id);
-            flash(`Saved “${entry.title}”${replaced ? ', replacing its saved copy' : ''}`);
+            const { entry, replaced } = await groups.saveLiveGroup(group.id, windowId);
+            flash(`Saved “${displayTitle(entry.title, entry.pinned)}”${replaced ? ', replacing its saved copy' : ''}`);
           }),
       }),
       el('button', {
@@ -482,8 +499,8 @@ function liveGroupCard(group, tabs, hex) {
         textContent: 'Save & close',
         onclick: () =>
           run(async () => {
-            const { entry, replaced } = await groups.saveLiveGroup(group.id, { close: true });
-            flash(`Saved and closed “${entry.title}”${replaced ? ', replacing its saved copy' : ''}`);
+            const { entry, replaced } = await groups.saveLiveGroup(group.id, windowId, { close: true });
+            flash(`Saved and closed “${displayTitle(entry.title, entry.pinned)}”${replaced ? ', replacing its saved copy' : ''}`);
           }),
       }),
     ),
@@ -510,12 +527,22 @@ async function renderCurrent() {
     else groupSpans.set(t.groupId, { first: t.index, count: 1 });
   }
   liveGroups.sort((a, b) => groupSpans.get(a.id).first - groupSpans.get(b.id).first);
+  // Pinned tabs always sit at the start of the tab strip, so their card comes first.
+  const pinned = tabs.filter((t) => t.pinned);
+  const pinnedCard = pinned.length > 0 && liveGroupCard({ id: PINNED, windowId }, pinned, groups.PINNED_COLOR);
   $('#groups').replaceChildren(
+    ...[pinnedCard].filter(Boolean),
     ...(liveGroups.length
       ? liveGroups.map((g) => liveGroupCard(g, tabs.filter((t) => t.groupId === g.id), groups.groupHex(g, custom)))
       : [el('p', { className: 'empty', textContent: 'No groups yet. Drag a tab from below to start one.' })]),
   );
-  liveMerge.update(new Map(liveGroups.map((g) => [g.id, g.title || 'Untitled group'])));
+  $('#pin-zone').classList.toggle('available', !pinnedCard);
+  liveMerge.update(
+    new Map([
+      ...(pinnedCard ? [[PINNED, displayTitle(groups.PINNED_TITLE, true)]] : []),
+      ...liveGroups.map((g) => [g.id, g.title || 'Untitled group']),
+    ]),
+  );
 
   const ungrouped = tabs.filter((t) => t.groupId === NONE && !t.pinned);
   $('#ungrouped').replaceChildren(
@@ -554,8 +581,8 @@ for (const button of document.querySelectorAll('.import')) {
 // ---- "Saved" view ----
 
 function savedCard(entry) {
-  const card = el('article', { className: 'card' });
-  card.style.setProperty('--c', entry.color);
+  const card = el('article', { className: entry.pinned ? 'card pinned' : 'card' });
+  card.style.setProperty('--c', entry.pinned ? groups.PINNED_COLOR : entry.color);
   card.dataset.mergeId = entry.id;
 
   let confirmTimer;
@@ -608,13 +635,24 @@ function savedCard(entry) {
         onclick: () =>
           run(async () => {
             const groupId = await groups.restoreSavedGroup(entry, windowId);
-            flash(groupId ? `Restored “${entry.title}”` : `Couldn't restore any tabs from “${entry.title}”`);
+            const what = displayTitle(entry.title, entry.pinned);
+            flash(groupId ? `Restored “${what}”` : `Couldn't restore any tabs from “${what}”`);
           }),
       }),
     ),
   );
 
-  card.append(el('header', {}, savedMerge.on && savedMerge.checkbox(entry.id), el('span', { className: 'dot' }), el('h3', { textContent: entry.title }), toggle), body);
+  card.append(
+    el(
+      'header',
+      {},
+      savedMerge.on && savedMerge.checkbox(entry.id),
+      entry.pinned ? pinMark() : el('span', { className: 'dot' }),
+      el('h3', { textContent: entry.title }),
+      toggle,
+    ),
+    body,
+  );
   return card;
 }
 
@@ -626,7 +664,7 @@ async function renderSaved() {
       ? saved.map(savedCard)
       : [el('p', { className: 'empty', textContent: 'No saved groups yet. Use “Save” on a group to keep it for later.' })]),
   );
-  savedMerge.update(new Map(saved.map((e) => [e.id, e.title])));
+  savedMerge.update(new Map(saved.map((e) => [e.id, displayTitle(e.title, e.pinned)])));
 }
 
 // ---- Shell ----

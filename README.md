@@ -40,6 +40,18 @@ groups to reopen later, even in the other browser.
   the same group, another group or the ungrouped list. Dropping anywhere else on a group adds the tab at the end.
 - **Reorder groups:** drag a group by its ⠿ handle, and the browser's tab strip follows.
 
+### 📌 Pinned tabs
+
+The window's pinned tabs are shown as a group of their own, always first. It is marked with 📌 and can be collapsed,
+merged, saved, exported and restored like any other group. Its title can't be changed, and it's always grey.
+
+- Dropping a tab on it pins the tab, and dropping a pinned tab on a group or on "Ungrouped tabs" unpins it. When
+  the window has no pinned tabs, a "Drop here to pin" zone appears while you drag.
+- Saved and exported pinned tabs are restored as pinned tabs, alongside any the window already has. Exported
+  files mark them with `"pinned": true`.
+- A group that is only *named* "Pinned tabs" stays an ordinary group: it has no 📌, and Deduplicate never merges
+  it with the pinned tabs.
+
 ### 🧹 Deduplicate
 
 - **In this window:** groups with the same name (ignoring case) are merged into the leftmost one, and duplicate
@@ -112,7 +124,7 @@ switched to the current browser's scheme when a group is restored. Internal page
 
 ```
 manifest.json        MV3 manifest (permissions: tabs, tabGroups, storage, downloads)
-background.js        Service worker: custom-color cleanup
+background.js        Service worker: cleans up custom colors, UUIDs and collapsed state of closed groups
 lib/colors.js        Native palette, nearest-color matching, hex helpers
 lib/groups.js        Group, save and restore logic
 lib/storage.js       Saved groups and rules (storage.local), live custom colors and UUIDs (storage.session)

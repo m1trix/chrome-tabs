@@ -18,7 +18,7 @@ function resultRow(file, entry, error, replaced) {
   }
   const meta = el('div', {
     className: 'meta',
-    textContent: `${plural(entry.tabs.length, 'tab')} · ${replaced ? 'replaced its saved copy' : 'added to Saved'}`,
+    textContent: `${entry.pinned ? 'Pinned tabs · ' : ''}${plural(entry.tabs.length, 'tab')} · ${replaced ? 'replaced its saved copy' : 'added to Saved'}`,
   });
   const open = el('button', {
     className: 'btn',
@@ -34,7 +34,7 @@ function resultRow(file, entry, error, replaced) {
   const row = el(
     'li',
     {},
-    el('div', { className: 'info' }, el('div', { className: 'name', textContent: entry.title }), meta),
+    el('div', { className: 'info' }, el('div', { className: 'name', textContent: entry.pinned ? `📌 ${entry.title}` : entry.title }), meta),
     open,
   );
   row.style.setProperty('--c', entry.color);
