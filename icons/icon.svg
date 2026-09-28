@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <!-- Source of truth for the extension icon. Browsers need PNG manifest icons:
+       run `node scripts/build-icons.mjs` after editing to regenerate them. -->
+  <rect width="128" height="128" rx="28" fill="#1a73e8"/>
+  <rect x="20.5" y="25.5" width="59" height="20.5" rx="10.25" fill="#f9ab00"/>
+  <rect x="20.5" y="54" width="87" height="20.5" rx="10.25" fill="#ffffff"/>
+  <rect x="20.5" y="82" width="71.5" height="20.5" rx="10.25" fill="#34a853"/>
+</svg>

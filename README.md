@@ -53,7 +53,17 @@ lib/transfer.js      Group export/import as JSON
 lib/dom.js           Tiny element helper
 popup/               Toolbar popup (“This window” and “Saved” views)
 import/              Import page (file pickers can't live in the popup)
-icons/               Toolbar and store icons
+icons/               icon.svg (source) and the PNGs generated from it
+scripts/             build-icons.mjs: regenerates the PNG icons from icon.svg
+```
+
+## Icons
+
+The icon is drawn in `icons/icon.svg`. Chrome and Edge only accept raster manifest icons, so the PNGs next to it
+are generated from the SVG with headless Chrome or Edge. After editing the SVG, run:
+
+```sh
+node scripts/build-icons.mjs
 ```
 
 ## Packaging
@@ -62,5 +72,5 @@ Zip the folder contents (without `.git`) to upload to the Chrome Web Store or
 [Microsoft Edge Add-ons](https://partner.microsoft.com/dashboard/microsoftedge/) (same zip for both):
 
 ```sh
-zip -r tab-groups-plus.zip . -x '.git/*' '*.DS_Store'
+zip -r tab-groups-plus.zip . -x '.git/*' 'scripts/*' '*.DS_Store'
 ```
