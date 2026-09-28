@@ -127,8 +127,16 @@ function collapsible(key, label, ...children) {
     toggle.setAttribute('aria-expanded', !body.hidden);
   };
   sync();
-  return { toggle, body };
+  const expand = () => {
+    body.hidden = false;
+    collapsed.delete(key);
+    sync();
+  };
+  return { toggle, body, expand };
 }
+
+// Group ids whose color picker the user opened; pickers start hidden and stay open across re-renders.
+const pickerOpen = new Set();
 
 // ---- Drag and drop: move tabs into, out of, and between groups ----
 
@@ -334,10 +342,31 @@ function liveGroupCard(group, tabs, hex) {
   tabDropList(list, group.id);
   makeGroupDraggable(grip, card, group.id);
 
-  const { toggle, body } = collapsible(
+  const picker = colorPicker(hex, (color) => run(() => groups.setGroupColor(group.id, color)));
+  picker.hidden = !pickerOpen.has(group.id);
+  const dot = el('button', {
+    type: 'button',
+    className: 'dot',
+    title: 'Change color',
+    onclick: () => {
+      // On a collapsed card, open the card along with the picker.
+      if (body.hidden) {
+        expand();
+        picker.hidden = false;
+      } else {
+        picker.hidden = !picker.hidden;
+      }
+      if (picker.hidden) pickerOpen.delete(group.id);
+      else pickerOpen.add(group.id);
+      dot.setAttribute('aria-expanded', !picker.hidden);
+    },
+  });
+  dot.setAttribute('aria-expanded', !picker.hidden);
+
+  const { toggle, body, expand } = collapsible(
     `live:${group.id}`,
     plural(tabs.length, 'tab'),
-    colorPicker(hex, (color) => run(() => groups.setGroupColor(group.id, color))),
+    picker,
     list,
     el(
       'div',
@@ -367,7 +396,7 @@ function liveGroupCard(group, tabs, hex) {
     ),
   );
 
-  card.append(el('header', {}, grip, el('span', { className: 'dot' }), title, toggle), body);
+  card.append(el('header', {}, grip, dot, title, toggle), body);
   return card;
 }
 
