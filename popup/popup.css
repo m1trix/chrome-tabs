@@ -39,12 +39,9 @@ header {
 .views button[aria-selected="true"] { color: var(--accent); border-bottom-color: var(--accent); }
 .count:not(:empty)::before { content: "("; }
 .count:not(:empty)::after { content: ")"; }
-.icon-btn { border: 0; background: none; padding: 8px 12px; cursor: pointer; color: var(--muted); font-size: 16px; }
-.icon-btn:hover { color: var(--fg); }
 
 section { padding: 12px; }
 h2 { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .05em; color: var(--muted); margin: 16px 0 4px; }
-.toolbar { display: flex; gap: 8px; margin-bottom: 10px; }
 .empty { color: var(--muted); text-align: center; padding: 12px 0; margin: 0; }
 
 .btn {

@@ -386,12 +386,6 @@ async function renderCurrent() {
   updateNewGroupButton();
 }
 
-$('#auto-group').onclick = () =>
-  run(async () => {
-    const n = await groups.autoGroupByDomain(windowId);
-    flash(n ? `Updated ${plural(n, 'group')}` : 'Nothing to group');
-  });
-
 $('#new-group').onsubmit = (e) => {
   e.preventDefault();
   const tabIds = [...document.querySelectorAll('#ungrouped input:checked')].map((i) => Number(i.value));
@@ -487,7 +481,5 @@ for (const tab of document.querySelectorAll('[role=tab]')) {
     }
   };
 }
-
-$('#open-options').onclick = () => chrome.runtime.openOptionsPage();
 
 await render();

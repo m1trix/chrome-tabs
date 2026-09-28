@@ -11,17 +11,13 @@ coloring them, and saving groups to reopen later.
 - **Reorder tabs** – drag a tab between rows of a group's tab list to put it at that spot (works for tabs
   from the same group, another group, or ungrouped tabs). Dropping elsewhere on a group adds tabs at the end.
 - **Reorder groups** – drag a group by its ⠿ handle to move the whole group; the browser's tab strip follows.
-- **Group by domain** – one click (or <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>G</kbd>) groups ungrouped tabs by site.
-  Domains with 2+ tabs get their own group; tabs join an existing group with the same name.
-- **Domain rules** (options page) – map domains to a group name and color, e.g. `github.com` → “Code”, green.
-  Several domains can share a group name.
 - **Custom colors** – pick any of the 9 built-in colors or enter a custom hex color.
 - **Save & reopen** – save a group (optionally closing its tabs) and restore it later as a group in the current window.
 
 ### About custom colors
 
 The `chrome.tabGroups` API only supports nine colors (grey, blue, red, yellow, green, pink, purple, cyan, orange),
-in both Chrome and Edge. Custom hex colors are kept by the extension (in the popup, saved groups, and rules) and
+in both Chrome and Edge. Custom hex colors are kept by the extension (in the popup and saved groups) and
 the tab strip shows the closest built-in color. Changing a group's color from the tab strip clears its custom color.
 
 ## Install (unpacked)
@@ -36,13 +32,12 @@ After you edit files, click the reload icon on the extension card. To reopen the
 
 ```
 manifest.json        MV3 manifest (permissions: tabs, tabGroups, storage)
-background.js        Service worker: keyboard command and custom-color cleanup
+background.js        Service worker: custom-color cleanup
 lib/colors.js        Native palette, nearest-color matching, hex helpers
-lib/groups.js        Group, auto-group, save and restore logic
+lib/groups.js        Group, save and restore logic
 lib/storage.js       Saved groups and rules (storage.local), live custom colors (storage.session)
 lib/dom.js           Tiny element helper
 popup/               Toolbar popup (“This window” and “Saved” views)
-options/             Domain rules editor
 icons/               Toolbar and store icons
 ```
 
