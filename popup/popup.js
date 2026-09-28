@@ -332,59 +332,80 @@ $('#groups').addEventListener('drop', (e) => {
 
 // ---- Merge mode: tick groups, then merge them into the first one ticked ----
 
-let mergeMode = false;
-let mergeSelection = []; // group ids in the order they were ticked; the first is the target
-let groupTitles = new Map(); // group id -> display title, refreshed on render
+// Each view has its own merge mode, driven by the .merge button and .merge-bar inside it.
+// `onMerge(targetId, sourceIds, targetTitle)` does the merge; cards carry their id in data-merge-id.
+function mergeMode(view, onMerge) {
+  const q = (sel) => view.querySelector(sel);
+  const m = {
+    on: false,
+    selection: [], // ids in the order they were ticked; the first is the target
+    titles: new Map(), // id -> display title, refreshed on render
 
-function setMergeMode(on) {
-  mergeMode = on;
-  mergeSelection = [];
-  document.body.classList.toggle('merging', on);
-  $('#merge').setAttribute('aria-pressed', on);
-  $('#merge-bar').hidden = !on;
-}
-
-function syncMergeBar() {
-  const [target] = mergeSelection;
-  const n = mergeSelection.length;
-  $('#merge-summary').textContent =
-    n < 2 ? 'Select at least two groups to merge' : `Merge ${n} groups into “${groupTitles.get(target)}”`;
-  $('#merge-confirm').disabled = n < 2;
-  for (const card of groupCards()) card.classList.toggle('merge-target', Number(card.dataset.groupId) === target);
-}
-
-function mergeCheckbox(groupId) {
-  const box = el('input', {
-    type: 'checkbox',
-    className: 'merge-pick',
-    title: 'Select for merging',
-    checked: mergeSelection.includes(groupId),
-    onchange: () => {
-      if (box.checked) mergeSelection.push(groupId);
-      else mergeSelection = mergeSelection.filter((id) => id !== groupId);
-      syncMergeBar();
+    set(on) {
+      m.on = on;
+      m.selection = [];
+      view.classList.toggle('merging', on);
+      q('.merge').setAttribute('aria-pressed', on);
+      q('.merge-bar').hidden = !on;
     },
-  });
-  return box;
+
+    sync() {
+      const [target] = m.selection;
+      const n = m.selection.length;
+      q('.merge-summary').textContent =
+        n < 2 ? 'Select at least two groups to merge' : `Merge ${n} groups into “${m.titles.get(target)}”`;
+      q('.merge-confirm').disabled = n < 2;
+      for (const card of view.querySelectorAll('.card[data-merge-id]')) {
+        card.classList.toggle('merge-target', n > 0 && card.dataset.mergeId === String(target));
+      }
+    },
+
+    // Called on render. Groups that went away while in merge mode drop out of the selection.
+    update(titles) {
+      m.titles = titles;
+      m.selection = m.selection.filter((id) => titles.has(id));
+      q('.merge').disabled = titles.size < 2 && !m.on;
+      if (m.on) m.sync();
+    },
+
+    checkbox(id) {
+      const box = el('input', {
+        type: 'checkbox',
+        className: 'merge-pick',
+        title: 'Select for merging',
+        checked: m.selection.includes(id),
+        onchange: () => {
+          if (box.checked) m.selection.push(id);
+          else m.selection = m.selection.filter((x) => x !== id);
+          m.sync();
+        },
+      });
+      return box;
+    },
+  };
+
+  q('.merge').onclick = () => {
+    m.set(!m.on);
+    render();
+  };
+  q('.merge-cancel').onclick = () => {
+    m.set(false);
+    render();
+  };
+  q('.merge-confirm').onclick = () => {
+    const [target, ...sources] = m.selection;
+    const title = m.titles.get(target);
+    m.set(false);
+    run(async () => {
+      await onMerge(target, sources);
+      flash(`Merged ${plural(sources.length + 1, 'group')} into “${title}”`);
+    });
+  };
+  return m;
 }
 
-$('#merge').onclick = () => {
-  setMergeMode(!mergeMode);
-  render();
-};
-$('#merge-cancel').onclick = () => {
-  setMergeMode(false);
-  render();
-};
-$('#merge-confirm').onclick = () => {
-  const [target, ...sources] = mergeSelection;
-  const title = groupTitles.get(target);
-  setMergeMode(false);
-  run(async () => {
-    await groups.mergeGroups(target, sources);
-    flash(`Merged ${plural(sources.length + 1, 'group')} into “${title}”`);
-  });
-};
+const liveMerge = mergeMode($('#view-current'), groups.mergeGroups);
+const savedMerge = mergeMode($('#view-saved'), groups.mergeSavedGroups);
 
 // ---- "This window" view ----
 
@@ -392,6 +413,7 @@ function liveGroupCard(group, tabs, hex) {
   const card = el('article', { className: 'card' });
   card.style.setProperty('--c', hex);
   card.dataset.groupId = group.id;
+  card.dataset.mergeId = group.id;
   dropZone(card, group.id, (tabIds) => chrome.tabs.group({ groupId: group.id, tabIds }));
 
   const title = el('input', {
@@ -459,7 +481,7 @@ function liveGroupCard(group, tabs, hex) {
     ),
   );
 
-  card.append(el('header', {}, mergeMode && mergeCheckbox(group.id), grip, dot, title, toggle), body);
+  card.append(el('header', {}, liveMerge.on && liveMerge.checkbox(group.id), grip, dot, title, toggle), body);
   return card;
 }
 
@@ -480,17 +502,12 @@ async function renderCurrent() {
     else groupSpans.set(t.groupId, { first: t.index, count: 1 });
   }
   liveGroups.sort((a, b) => groupSpans.get(a.id).first - groupSpans.get(b.id).first);
-  groupTitles = new Map(liveGroups.map((g) => [g.id, g.title || 'Untitled group']));
-  // Groups closed while in merge mode drop out of the selection.
-  mergeSelection = mergeSelection.filter((id) => groupTitles.has(id));
-  $('#merge').disabled = liveGroups.length < 2 && !mergeMode;
-
   $('#groups').replaceChildren(
     ...(liveGroups.length
       ? liveGroups.map((g) => liveGroupCard(g, tabs.filter((t) => t.groupId === g.id), groups.groupHex(g, custom)))
       : [el('p', { className: 'empty', textContent: 'No groups yet. Drag a tab from below to start one.' })]),
   );
-  if (mergeMode) syncMergeBar();
+  liveMerge.update(new Map(liveGroups.map((g) => [g.id, g.title || 'Untitled group'])));
 
   const ungrouped = tabs.filter((t) => t.groupId === NONE && !t.pinned);
   $('#ungrouped').replaceChildren(
@@ -505,11 +522,21 @@ async function renderCurrent() {
   }
 }
 
+function flashDedupe(...parts) {
+  parts = parts.filter(Boolean);
+  flash(parts.length ? parts.join(', ').replace(/^./, (c) => c.toUpperCase()) : 'No duplicates found');
+}
+
 $('#dedupe').onclick = () =>
   run(async () => {
     const { merged, closed } = await groups.deduplicate(windowId);
-    const parts = [merged && `merged ${plural(merged, 'group')}`, closed && `closed ${plural(closed, 'duplicate tab')}`].filter(Boolean);
-    flash(parts.length ? parts.join(', ').replace(/^./, (c) => c.toUpperCase()) : 'No duplicates found');
+    flashDedupe(merged && `merged ${plural(merged, 'group')}`, closed && `closed ${plural(closed, 'duplicate tab')}`);
+  });
+
+$('#dedupe-saved').onclick = () =>
+  run(async () => {
+    const { merged, removed } = await groups.deduplicateSaved();
+    flashDedupe(merged && `merged ${plural(merged, 'group')}`, removed && `removed ${plural(removed, 'duplicate tab')}`);
   });
 
 for (const button of document.querySelectorAll('.import')) {
@@ -521,6 +548,7 @@ for (const button of document.querySelectorAll('.import')) {
 function savedCard(entry) {
   const card = el('article', { className: 'card' });
   card.style.setProperty('--c', entry.color);
+  card.dataset.mergeId = entry.id;
 
   let confirmTimer;
   const del = el('button', {
@@ -578,7 +606,7 @@ function savedCard(entry) {
     ),
   );
 
-  card.append(el('header', {}, el('span', { className: 'dot' }), el('h3', { textContent: entry.title }), toggle), body);
+  card.append(el('header', {}, savedMerge.on && savedMerge.checkbox(entry.id), el('span', { className: 'dot' }), el('h3', { textContent: entry.title }), toggle), body);
   return card;
 }
 
@@ -590,6 +618,7 @@ async function renderSaved() {
       ? saved.map(savedCard)
       : [el('p', { className: 'empty', textContent: 'No saved groups yet. Use “Save” on a group to keep it for later.' })]),
   );
+  savedMerge.update(new Map(saved.map((e) => [e.id, e.title])));
 }
 
 // ---- Shell ----

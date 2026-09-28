@@ -17,7 +17,7 @@
     <div class="toolbar">
       <button id="dedupe" class="btn" title="Merge groups with the same name and close duplicate tabs">Deduplicate</button>
       <button class="btn import" title="Import groups from exported JSON files">Import…</button>
-      <button id="merge" class="btn" title="Pick groups to merge together" aria-pressed="false">Merge</button>
+      <button class="btn merge" title="Pick groups to merge together" aria-pressed="false">Merge</button>
     </div>
     <div id="groups"></div>
     <div id="new-group-zone">Drop here to create a new group</div>
@@ -27,18 +27,26 @@
       <ul id="ungrouped" class="tab-list"></ul>
     </div>
 
-    <div id="merge-bar" hidden>
-      <span id="merge-summary"></span>
-      <button id="merge-cancel" class="btn">Cancel</button>
-      <button id="merge-confirm" class="btn primary" disabled>Merge</button>
+    <div class="merge-bar" hidden>
+      <span class="merge-summary"></span>
+      <button class="btn merge-cancel">Cancel</button>
+      <button class="btn primary merge-confirm" disabled>Merge</button>
     </div>
   </section>
 
   <section id="view-saved" hidden>
     <div class="toolbar">
+      <button id="dedupe-saved" class="btn" title="Merge saved groups with the same name and remove duplicate tabs">Deduplicate</button>
       <button class="btn import" title="Import groups from exported JSON files">Import…</button>
+      <button class="btn merge" title="Pick saved groups to merge together" aria-pressed="false">Merge</button>
     </div>
     <div id="saved"></div>
+
+    <div class="merge-bar" hidden>
+      <span class="merge-summary"></span>
+      <button class="btn merge-cancel">Cancel</button>
+      <button class="btn primary merge-confirm" disabled>Merge</button>
+    </div>
   </section>
 
   <p id="status" role="status"></p>

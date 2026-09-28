@@ -13,8 +13,11 @@ coloring them, and saving groups to reopen later.
 - **Reorder groups** – drag a group by its ⠿ handle to move the whole group; the browser's tab strip follows.
 - **Deduplicate** – merges groups with the same name (ignoring case) into the leftmost one and closes duplicate
   tabs (same URL) in the window, keeping the active, pinned, or grouped copy. Untitled groups aren't merged.
+  On the Saved view it merges same-named saved groups into the most recently saved one and removes repeated
+  URLs within each saved group.
 - **Merge** – click **Merge**, tick the groups to combine, and confirm: every ticked group's tabs move into the
-  first group you ticked (marked “target”). **Cancel** leaves merge mode.
+  first group you ticked (marked “target”). **Cancel** leaves merge mode. It works the same way on the Saved view,
+  where the other ticked saved groups are removed once their tabs are added to the target.
 - **Export / import** – download any group (open or saved) as a JSON file with **Export**; **Import…** on the
   Saved view opens a page where you pick or drop exported files, which are added to the saved groups.
 - **Custom colors** – pick any of the 9 built-in colors or enter a custom hex color.
