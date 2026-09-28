@@ -109,18 +109,20 @@ function pinButton(tab, home) {
 }
 
 // `pinnable` adds a pin/unpin button; `home` is the group a pinned tab would go back to.
-function tabRow(tab, { selectable = false, pinnable = false, home } = {}) {
+// In its group's card (`inGroup`), a pinned tab's × takes it out of the group instead of closing it.
+function tabRow(tab, { selectable = false, pinnable = false, home, inGroup = false } = {}) {
   const label = el('span', { className: 'tab-title', textContent: tab.title || tab.url, title: tab.url });
   const row = selectable
     ? el('label', { className: 'tab-row' }, el('input', { type: 'checkbox', value: tab.id }), favicon(tab.favIconUrl), label)
     : el('button', { className: 'tab-row', onclick: () => chrome.tabs.update(tab.id, { active: true }) }, favicon(tab.favIconUrl), label);
   makeDraggable(row, tab);
+  const removes = inGroup && tab.pinned;
   const close = el('button', {
     className: 'tab-close',
     textContent: '×',
-    title: 'Close tab',
-    ariaLabel: `Close ${tab.title || tab.url}`,
-    onclick: () => run(() => chrome.tabs.remove(tab.id)),
+    title: removes ? 'Remove from group (stays pinned)' : 'Close tab',
+    ariaLabel: `${removes ? 'Remove from group' : 'Close'} ${tab.title || tab.url}`,
+    onclick: () => run(() => (removes ? groups.removeFromGroups([tab.id]) : chrome.tabs.remove(tab.id))),
   });
   const li = el('li', {}, row, pinnable && pinButton(tab, home), close);
   li.dataset.tabId = tab.id;
@@ -165,7 +167,7 @@ const pickerOpen = new Set();
 
 // ---- Drag and drop: move tabs into, out of, and between groups ----
 
-let dragged = null; // { tabIds, groupId } while a drag is in progress
+let dragged = null; // { tabIds, groupId, fromPinnedCard } while a drag is in progress
 
 function endDrag() {
   dragged = null;
@@ -183,7 +185,8 @@ function makeDraggable(node, tab) {
     const checked = [...document.querySelectorAll('#ungrouped input:checked')].map((i) => Number(i.value));
     const groupId = tab.pinned ? PINNED : tab.groupId;
     const tabIds = groupId === NONE && checked.includes(tab.id) ? checked : [tab.id];
-    dragged = { tabIds, groupId };
+    // A pinned tab is listed both in the pinned tabs' card and in its home group's card.
+    dragged = { tabIds, groupId, fromPinnedCard: !!node.closest('.card.pinned') };
     e.dataTransfer.effectAllowed = 'move';
     e.dataTransfer.setData('text/plain', tab.url ?? '');
     // Changing layout synchronously in dragstart can cancel the drag in Chrome.
@@ -207,13 +210,17 @@ function dropZone(node, groupId, onDrop) {
   node.addEventListener('drop', (e) => {
     if (!dragged) return; // a group drag, handled by #groups
     e.preventDefault();
-    const { tabIds } = dragged;
+    const drag = dragged;
     endDrag();
-    run(() => onDrop(tabIds));
+    run(() => onDrop(drag.tabIds, drag));
   });
 }
 
-dropZone($('#ungrouped-zone'), NONE, (tabIds) => groups.moveTabs(tabIds, NONE));
+// Pinned tabs dragged out of their group stay pinned, and will go to the ungrouped tabs when unpinned.
+// Dragged out of the pinned tabs' card, they're unpinned.
+dropZone($('#ungrouped-zone'), NONE, (tabIds, { fromPinnedCard }) =>
+  fromPinnedCard ? groups.moveTabs(tabIds, NONE) : groups.removeFromGroups(tabIds),
+);
 // A new group starts untitled, so its name field gets focus once it's rendered.
 let focusGroupId = null;
 dropZone($('#new-group-zone'), 'new', async (tabIds) => {
@@ -465,7 +472,7 @@ function liveGroupCard(group, tabs, hex, { homes = {} } = {}) {
   const grip = isPinned
     ? pinMark()
     : !isClosed && el('span', { className: 'grip', textContent: '⠿', title: 'Drag to reorder' });
-  const list = el('ul', { className: 'tab-list' }, ...tabs.map((t) => tabRow(t, { pinnable: true, home: homes[t.id] })));
+  const list = el('ul', { className: 'tab-list' }, ...tabs.map((t) => tabRow(t, { pinnable: true, home: homes[t.id], inGroup: !isPinned })));
   tabDropList(list, group.id);
   if (grip && !isPinned) makeGroupDraggable(grip, card, group.id);
 
@@ -505,7 +512,7 @@ function liveGroupCard(group, tabs, hex, { homes = {} } = {}) {
         textContent: isPinned ? 'Unpin' : 'Ungroup',
         title: isPinned
           ? 'Unpin these tabs, moving tabs pinned from a group back to it'
-          : 'Ungroup these tabs. Pinned ones stay pinned and no longer go back to this group.',
+          : 'Ungroup these tabs. Pinned ones stay pinned and go to the ungrouped tabs when unpinned.',
         onclick: () => run(() => (isPinned ? groups.unpinTabs(tabs.map((t) => t.id)) : groups.ungroupGroup(group.id))),
       }),
       // Pinned tabs are saved and exported with the groups they were pinned from, not on their own.
