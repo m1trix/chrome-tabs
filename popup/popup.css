@@ -62,8 +62,11 @@ h2 { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacin
 
 .card {
   margin-bottom: 8px; padding: 8px 10px;
-  background: var(--card); border: 1px solid var(--border); border-left: 4px solid var(--c); border-radius: 8px;
+  background: var(--card); border: 3px solid var(--c); border-radius: 8px;
 }
+/* Collapsed cards get a thin grey border; only the dot keeps the group color.
+   The extra padding makes up for the thinner border so content doesn't shift. */
+.card:has(> .card-body[hidden]) { border: 1px solid var(--border); padding: 10px 12px; }
 .card header { position: static; display: flex; gap: 6px; align-items: center; border: 0; background: none; }
 .card h3 { flex: 1; margin: 0; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .dot { flex: none; width: 10px; height: 10px; border-radius: 50%; background: var(--c); }
@@ -136,7 +139,7 @@ body.dragging #new-group-zone { display: block; }
 .card.dragging-source { opacity: .4; }
 .card.insert-before::before,
 .card.insert-after::after {
-  content: ""; position: absolute; left: -5px; right: -1px; height: 3px; border-radius: 2px; background: var(--accent);
+  content: ""; position: absolute; left: -3px; right: -3px; height: 3px; border-radius: 2px; background: var(--accent);
 }
 .card.insert-before::before { top: -7px; }
 .card.insert-after::after { bottom: -7px; }
