@@ -105,20 +105,29 @@ function tabRow(tab, { selectable = false } = {}) {
   return li;
 }
 
-// Tab lists are always expanded unless the user collapses one; re-renders keep that choice.
+// Group cards are always expanded unless the user collapses one; re-renders keep that choice.
 const collapsed = new Set();
 
-function tabList(key, summary, rows) {
-  const details = el(
-    'details',
-    {
-      open: !collapsed.has(key),
-      ontoggle: () => (details.open ? collapsed.delete(key) : collapsed.add(key)),
+// Wraps everything below a card's header in a body that a header button collapses/expands.
+function collapsible(key, label, ...children) {
+  const body = el('div', { className: 'card-body', hidden: collapsed.has(key) }, ...children);
+  const toggle = el('button', {
+    type: 'button',
+    className: 'collapse-toggle',
+    onclick: () => {
+      body.hidden = !body.hidden;
+      if (body.hidden) collapsed.add(key);
+      else collapsed.delete(key);
+      sync();
     },
-    el('summary', { textContent: summary }),
-    el('ul', { className: 'tab-list' }, ...rows),
-  );
-  return details;
+  });
+  const sync = () => {
+    toggle.textContent = `${label} ${body.hidden ? '▸' : '▾'}`;
+    toggle.title = body.hidden ? 'Expand group' : 'Collapse group';
+    toggle.setAttribute('aria-expanded', !body.hidden);
+  };
+  sync();
+  return { toggle, body };
 }
 
 // ---- Drag and drop: move tabs into, out of, and between groups ----
@@ -321,14 +330,15 @@ function liveGroupCard(group, tabs, hex) {
     onchange: () => chrome.tabGroups.update(group.id, { title: title.value }),
   });
   const grip = el('span', { className: 'grip', textContent: '⠿', title: 'Drag to reorder' });
-  const liveTabList = tabList(`live:${group.id}`, plural(tabs.length, 'tab'), tabs.map((t) => tabRow(t)));
-  tabDropList(liveTabList.querySelector('ul'), group.id);
+  const list = el('ul', { className: 'tab-list' }, ...tabs.map((t) => tabRow(t)));
+  tabDropList(list, group.id);
   makeGroupDraggable(grip, card, group.id);
 
-  card.append(
-    el('header', {}, grip, el('span', { className: 'dot' }), title),
+  const { toggle, body } = collapsible(
+    `live:${group.id}`,
+    plural(tabs.length, 'tab'),
     colorPicker(hex, (color) => run(() => groups.setGroupColor(group.id, color))),
-    liveTabList,
+    list,
     el(
       'div',
       { className: 'actions' },
@@ -356,6 +366,8 @@ function liveGroupCard(group, tabs, hex) {
       }),
     ),
   );
+
+  card.append(el('header', {}, grip, el('span', { className: 'dot' }), title, toggle), body);
   return card;
 }
 
@@ -456,13 +468,11 @@ function savedCard(entry) {
     ),
   );
 
-  card.append(
-    el('header', {}, el('span', { className: 'dot' }), el('h3', { textContent: entry.title })),
-    el('div', {
-      className: 'meta',
-      textContent: `${plural(entry.tabs.length, 'tab')} · saved ${new Date(entry.savedAt).toLocaleString()}`,
-    }),
-    tabList(`saved:${entry.id}`, 'Tabs', tabs),
+  const { toggle, body } = collapsible(
+    `saved:${entry.id}`,
+    plural(entry.tabs.length, 'tab'),
+    el('div', { className: 'meta', textContent: `Saved ${new Date(entry.savedAt).toLocaleString()}` }),
+    el('ul', { className: 'tab-list' }, ...tabs),
     el(
       'div',
       { className: 'actions' },
@@ -484,6 +494,8 @@ function savedCard(entry) {
       }),
     ),
   );
+
+  card.append(el('header', {}, el('span', { className: 'dot' }), el('h3', { textContent: entry.title }), toggle), body);
   return card;
 }
 
