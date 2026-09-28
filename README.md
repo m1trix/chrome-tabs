@@ -1,8 +1,8 @@
 <p align="center">
-  <img src="icons/icon.svg" width="96" height="96" alt="Tab Groups Plus icon">
+  <img src="icons/icon.svg" width="96" height="96" alt="Tab Groups++ icon">
 </p>
 
-<h1 align="center">Tab Groups Plus</h1>
+<h1 align="center">Tab Groups++</h1>
 
 <p align="center">
   <b>Drag, color, merge and save your tab groups, all from one popup.</b><br>
@@ -11,9 +11,9 @@
 
 ---
 
-## Why Tab Groups Plus?
+## Why Tab Groups++?
 
-Browser tab groups are great until you have a dozen of them. Tab Groups Plus gives you one popup where you can
+Browser tab groups are great until you have a dozen of them. Tab Groups++ gives you one popup where you can
 see every group in the window and rearrange it by dragging. You can clean up duplicates in one click and save
 groups to reopen later, even in the other browser.
 
@@ -145,3 +145,10 @@ Zip the folder contents (without `.git`) to upload to the Chrome Web Store or
 ```sh
 zip -r tab-groups-plus.zip . -x '.git/*' '.claude/*' 'scripts/*' '*.DS_Store'
 ```
+
+---
+
+## License
+
+Tab Groups++ is free software, released under the [GNU General Public License v3.0](LICENSE).
+You can redistribute and modify it under the terms of that license.
