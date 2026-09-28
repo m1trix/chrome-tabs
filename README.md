@@ -82,5 +82,5 @@ Zip the folder contents (without `.git`) to upload to the Chrome Web Store or
 [Microsoft Edge Add-ons](https://partner.microsoft.com/dashboard/microsoftedge/) (same zip for both):
 
 ```sh
-zip -r tab-groups-plus.zip . -x '.git/*' 'scripts/*' '*.DS_Store'
+zip -r tab-groups-plus.zip . -x '.git/*' '.claude/*' 'scripts/*' '*.DS_Store'
 ```
