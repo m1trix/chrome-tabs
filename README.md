@@ -8,6 +8,7 @@ coloring them, and saving groups to reopen later.
 - **Group tabs** – select ungrouped tabs in the popup and group them with a name and color.
 - **Drag and drop** – in the popup, drag tabs onto a group to add them, onto “Ungrouped tabs” to remove them,
   or onto the “new group” zone that appears while dragging. Dragging a checked tab moves every checked tab.
+- **Reorder groups** – drag a group by its ⠿ handle to move the whole group; the browser's tab strip follows.
 - **Group by domain** – one click (or <kbd>Alt</kbd>+<kbd>Shift</kbd>+<kbd>G</kbd>) groups ungrouped tabs by site.
   Domains with 2+ tabs get their own group; tabs join an existing group with the same name.
 - **Domain rules** (options page) – map domains to a group name and color, e.g. `github.com` → “Code”, green.

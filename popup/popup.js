@@ -117,8 +117,11 @@ let dragged = null; // { tabIds, groupId } while a drag is in progress
 
 function endDrag() {
   dragged = null;
+  draggedGroup = null;
   document.body.classList.remove('dragging');
   for (const n of document.querySelectorAll('.drop-target')) n.classList.remove('drop-target');
+  for (const n of document.querySelectorAll('.dragging-source')) n.classList.remove('dragging-source');
+  clearInsertMarkers();
 }
 
 function makeDraggable(node, tab) {
@@ -149,6 +152,7 @@ function dropZone(node, groupId, onDrop) {
     if (!node.contains(e.relatedTarget)) node.classList.remove('drop-target');
   });
   node.addEventListener('drop', (e) => {
+    if (!dragged) return; // a group drag, handled by #groups
     e.preventDefault();
     const { tabIds } = dragged;
     endDrag();
@@ -159,11 +163,81 @@ function dropZone(node, groupId, onDrop) {
 dropZone($('#ungrouped-zone'), NONE, (tabIds) => chrome.tabs.ungroup(tabIds));
 dropZone($('#new-group-zone'), 'new', (tabIds) => groups.createGroup(tabIds, { windowId }));
 
+// ---- Drag and drop: reorder whole groups by their grip ----
+
+let draggedGroup = null; // group id while a group card is being dragged
+let groupSpans = new Map(); // group id -> { first, count }: its tabs' place in the tab strip
+
+const groupCards = () => [...$('#groups').querySelectorAll('.card')];
+
+function makeGroupDraggable(handle, card, groupId) {
+  handle.draggable = true;
+  handle.addEventListener('dragstart', (e) => {
+    draggedGroup = groupId;
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', '');
+    const rect = card.getBoundingClientRect();
+    e.dataTransfer.setDragImage(card, e.clientX - rect.left, e.clientY - rect.top);
+    requestAnimationFrame(() => draggedGroup != null && card.classList.add('dragging-source'));
+  });
+  handle.addEventListener('dragend', endDrag);
+}
+
+// The card the dragged group would land before; null means after the last card.
+function insertionPoint(y) {
+  return groupCards().find((c) => {
+    const r = c.getBoundingClientRect();
+    return y < r.top + r.height / 2;
+  }) ?? null;
+}
+
+function isNoopMove(before) {
+  const cards = groupCards();
+  const own = cards.find((c) => Number(c.dataset.groupId) === draggedGroup);
+  return before === own || before === (cards[cards.indexOf(own) + 1] ?? null);
+}
+
+// Final tab index for the dragged group so it sits right before `before` (or after the last group).
+function targetIndex(before) {
+  const moving = groupSpans.get(draggedGroup);
+  const anchor = groupSpans.get(Number((before ?? groupCards().at(-1)).dataset.groupId));
+  const edge = before ? anchor.first : anchor.first + anchor.count;
+  return moving.first < edge ? edge - moving.count : edge;
+}
+
+function clearInsertMarkers() {
+  for (const n of document.querySelectorAll('.insert-before, .insert-after')) n.classList.remove('insert-before', 'insert-after');
+}
+
+$('#groups').addEventListener('dragover', (e) => {
+  if (draggedGroup == null) return;
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+  clearInsertMarkers();
+  const before = insertionPoint(e.clientY);
+  if (isNoopMove(before)) return;
+  if (before) before.classList.add('insert-before');
+  else groupCards().at(-1).classList.add('insert-after');
+});
+$('#groups').addEventListener('dragleave', (e) => {
+  if (!$('#groups').contains(e.relatedTarget)) clearInsertMarkers();
+});
+$('#groups').addEventListener('drop', (e) => {
+  if (draggedGroup == null) return;
+  e.preventDefault();
+  const groupId = draggedGroup;
+  const before = insertionPoint(e.clientY);
+  const index = isNoopMove(before) ? null : targetIndex(before);
+  endDrag();
+  if (index != null) run(() => chrome.tabGroups.move(groupId, { index }));
+});
+
 // ---- "This window" view ----
 
 function liveGroupCard(group, tabs, hex) {
   const card = el('article', { className: 'card' });
   card.style.setProperty('--c', hex);
+  card.dataset.groupId = group.id;
   dropZone(card, group.id, (tabIds) => chrome.tabs.group({ groupId: group.id, tabIds }));
 
   const title = el('input', {
@@ -172,9 +246,11 @@ function liveGroupCard(group, tabs, hex) {
     placeholder: 'Untitled group',
     onchange: () => chrome.tabGroups.update(group.id, { title: title.value }),
   });
+  const grip = el('span', { className: 'grip', textContent: '⠿', title: 'Drag to reorder' });
+  makeGroupDraggable(grip, card, group.id);
 
   card.append(
-    el('header', {}, el('span', { className: 'dot' }), title),
+    el('header', {}, grip, el('span', { className: 'dot' }), title),
     colorPicker(hex, (color) => run(() => groups.setGroupColor(group.id, color))),
     tabList(`live:${group.id}`, plural(tabs.length, 'tab'), tabs.map((t) => tabRow(t))),
     el(
@@ -216,9 +292,15 @@ async function renderCurrent() {
   ]);
 
   // Show groups in tab-strip order.
-  const position = new Map();
-  for (const t of tabs) if (t.groupId !== NONE && !position.has(t.groupId)) position.set(t.groupId, t.index);
-  liveGroups.sort((a, b) => position.get(a.id) - position.get(b.id));
+  tabs.sort((a, b) => a.index - b.index);
+  groupSpans = new Map();
+  for (const t of tabs) {
+    if (t.groupId === NONE) continue;
+    const span = groupSpans.get(t.groupId);
+    if (span) span.count++;
+    else groupSpans.set(t.groupId, { first: t.index, count: 1 });
+  }
+  liveGroups.sort((a, b) => groupSpans.get(a.id).first - groupSpans.get(b.id).first);
 
   $('#groups').replaceChildren(
     ...(liveGroups.length

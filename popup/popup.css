@@ -115,3 +115,16 @@ details summary { cursor: pointer; color: var(--muted); font-size: 12px; }
 }
 body.dragging #new-group-zone { display: block; }
 #new-group-zone.drop-target { outline: 0; border-color: var(--accent); color: var(--accent); background: var(--hover); }
+
+/* Reordering groups */
+.card { position: relative; }
+.grip { flex: none; cursor: grab; color: var(--muted); font-size: 14px; line-height: 1; padding: 2px; user-select: none; }
+.grip:hover { color: var(--fg); }
+.grip:active { cursor: grabbing; }
+.card.dragging-source { opacity: .4; }
+.card.insert-before::before,
+.card.insert-after::after {
+  content: ""; position: absolute; left: -5px; right: -1px; height: 3px; border-radius: 2px; background: var(--accent);
+}
+.card.insert-before::before { top: -7px; }
+.card.insert-after::after { bottom: -7px; }
