@@ -89,10 +89,17 @@ function favicon(url) {
 function tabRow(tab, { selectable = false } = {}) {
   const label = el('span', { className: 'tab-title', textContent: tab.title || tab.url, title: tab.url });
   const row = selectable
-    ? el('label', {}, el('input', { type: 'checkbox', value: tab.id, onchange: updateNewGroupButton }), favicon(tab.favIconUrl), label)
-    : el('button', { onclick: () => chrome.tabs.update(tab.id, { active: true }) }, favicon(tab.favIconUrl), label);
+    ? el('label', { className: 'tab-row' }, el('input', { type: 'checkbox', value: tab.id, onchange: updateNewGroupButton }), favicon(tab.favIconUrl), label)
+    : el('button', { className: 'tab-row', onclick: () => chrome.tabs.update(tab.id, { active: true }) }, favicon(tab.favIconUrl), label);
   makeDraggable(row, tab);
-  const li = el('li', {}, row);
+  const close = el('button', {
+    className: 'tab-close',
+    textContent: '×',
+    title: 'Close tab',
+    ariaLabel: `Close ${tab.title || tab.url}`,
+    onclick: () => run(() => chrome.tabs.remove(tab.id)),
+  });
+  const li = el('li', {}, row, close);
   li.dataset.tabId = tab.id;
   return li;
 }
@@ -424,7 +431,7 @@ function savedCard(entry) {
       {},
       el(
         'button',
-        { onclick: () => chrome.tabs.create({ windowId, url: t.url }) },
+        { className: 'tab-row', onclick: () => chrome.tabs.create({ windowId, url: t.url }) },
         favicon(t.favIconUrl),
         el('span', { className: 'tab-title', textContent: t.title || t.url, title: t.url }),
       ),

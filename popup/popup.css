@@ -83,11 +83,18 @@ details summary { cursor: pointer; color: var(--muted); font-size: 12px; }
 .hex.invalid { border-color: #d93025; }
 
 .tab-list { list-style: none; margin: 4px 0; padding: 0; }
-.tab-list li > button, .tab-list li > label {
-  display: flex; gap: 6px; align-items: center; width: 100%; padding: 3px 4px;
+.tab-list li { display: flex; align-items: center; }
+.tab-list li.empty { display: block; }
+.tab-row {
+  display: flex; flex: 1; min-width: 0; gap: 6px; align-items: center; padding: 3px 4px;
   border: 0; border-radius: 4px; background: none; text-align: left; cursor: pointer;
 }
-.tab-list li > button:hover, .tab-list li > label:hover { background: var(--hover); }
+.tab-row:hover { background: var(--hover); }
+.tab-close {
+  flex: none; width: 20px; height: 20px; margin-left: 2px; padding: 0; cursor: pointer;
+  border: 0; border-radius: 50%; background: none; color: var(--muted); font-size: 15px; line-height: 1;
+}
+.tab-close:hover { background: var(--hover); color: var(--fg); }
 .favicon { flex: none; width: 16px; height: 16px; }
 .tab-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
