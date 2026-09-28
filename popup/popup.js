@@ -330,6 +330,62 @@ $('#groups').addEventListener('drop', (e) => {
   if (index != null) run(() => chrome.tabGroups.move(groupId, { index }));
 });
 
+// ---- Merge mode: tick groups, then merge them into the first one ticked ----
+
+let mergeMode = false;
+let mergeSelection = []; // group ids in the order they were ticked; the first is the target
+let groupTitles = new Map(); // group id -> display title, refreshed on render
+
+function setMergeMode(on) {
+  mergeMode = on;
+  mergeSelection = [];
+  document.body.classList.toggle('merging', on);
+  $('#merge').setAttribute('aria-pressed', on);
+  $('#merge-bar').hidden = !on;
+}
+
+function syncMergeBar() {
+  const [target] = mergeSelection;
+  const n = mergeSelection.length;
+  $('#merge-summary').textContent =
+    n < 2 ? 'Select at least two groups to merge' : `Merge ${n} groups into “${groupTitles.get(target)}”`;
+  $('#merge-confirm').disabled = n < 2;
+  for (const card of groupCards()) card.classList.toggle('merge-target', Number(card.dataset.groupId) === target);
+}
+
+function mergeCheckbox(groupId) {
+  const box = el('input', {
+    type: 'checkbox',
+    className: 'merge-pick',
+    title: 'Select for merging',
+    checked: mergeSelection.includes(groupId),
+    onchange: () => {
+      if (box.checked) mergeSelection.push(groupId);
+      else mergeSelection = mergeSelection.filter((id) => id !== groupId);
+      syncMergeBar();
+    },
+  });
+  return box;
+}
+
+$('#merge').onclick = () => {
+  setMergeMode(!mergeMode);
+  render();
+};
+$('#merge-cancel').onclick = () => {
+  setMergeMode(false);
+  render();
+};
+$('#merge-confirm').onclick = () => {
+  const [target, ...sources] = mergeSelection;
+  const title = groupTitles.get(target);
+  setMergeMode(false);
+  run(async () => {
+    await groups.mergeGroups(target, sources);
+    flash(`Merged ${plural(sources.length + 1, 'group')} into “${title}”`);
+  });
+};
+
 // ---- "This window" view ----
 
 function liveGroupCard(group, tabs, hex) {
@@ -403,7 +459,7 @@ function liveGroupCard(group, tabs, hex) {
     ),
   );
 
-  card.append(el('header', {}, grip, dot, title, toggle), body);
+  card.append(el('header', {}, mergeMode && mergeCheckbox(group.id), grip, dot, title, toggle), body);
   return card;
 }
 
@@ -424,12 +480,17 @@ async function renderCurrent() {
     else groupSpans.set(t.groupId, { first: t.index, count: 1 });
   }
   liveGroups.sort((a, b) => groupSpans.get(a.id).first - groupSpans.get(b.id).first);
+  groupTitles = new Map(liveGroups.map((g) => [g.id, g.title || 'Untitled group']));
+  // Groups closed while in merge mode drop out of the selection.
+  mergeSelection = mergeSelection.filter((id) => groupTitles.has(id));
+  $('#merge').disabled = liveGroups.length < 2 && !mergeMode;
 
   $('#groups').replaceChildren(
     ...(liveGroups.length
       ? liveGroups.map((g) => liveGroupCard(g, tabs.filter((t) => t.groupId === g.id), groups.groupHex(g, custom)))
       : [el('p', { className: 'empty', textContent: 'No groups yet. Drag a tab from below to start one.' })]),
   );
+  if (mergeMode) syncMergeBar();
 
   const ungrouped = tabs.filter((t) => t.groupId === NONE && !t.pinned);
   $('#ungrouped').replaceChildren(
