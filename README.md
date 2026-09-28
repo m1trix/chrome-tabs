@@ -64,10 +64,12 @@ on its own: pinned tabs are saved with the group they were pinned from.
   reordered or merged. Unpinning one of its tabs, or dropping a tab on it, reopens the group with its name, color
   and UUID.
 - **Dragging pinned tabs:** drag them within the pinned tabs to reorder them, or onto a group or "Ungrouped tabs"
-  to unpin them there instead of back to their own group.
+  to unpin them there instead of back to their own group. Dragging a pinned tab from its group's card to
+  "Ungrouped tabs" removes it from the group but keeps it pinned; unpinning it later puts it in "Ungrouped tabs". Its × in the group's card does the same, instead
+  of closing it.
 - **Saving:** a group's pinned tabs are saved, exported and closed (**Save & close**) along with it. They're marked
   with 📌 on the Saved view and `"pinned": true` in exported JSON, and restoring the group, from the Saved view or
-  an imported file, pins them again. **Ungroup** leaves them pinned, and they no longer go back to the group.
+  an imported file, pins them again. **Ungroup** leaves them pinned, and unpinning them puts them in "Ungrouped tabs".
 - A group that is only *named* "Pinned tabs" stays an ordinary group: it has no 📌, and Deduplicate never merges
   it with the pinned tabs.
 
