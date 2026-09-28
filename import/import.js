@@ -1,5 +1,5 @@
 import { el } from '../lib/dom.js';
-import { restoreSavedGroup } from '../lib/groups.js';
+import { isGroupOpen, restoreSavedGroup } from '../lib/groups.js';
 import { addSavedGroup } from '../lib/storage.js';
 import { fromJson } from '../lib/transfer.js';
 
@@ -8,7 +8,7 @@ const input = document.getElementById('file');
 const results = document.getElementById('results');
 const plural = (n, word) => `${n} ${word}${n === 1 ? '' : 's'}`;
 
-function resultRow(file, entry, error) {
+function resultRow(file, entry, error, replaced) {
   if (error) {
     return el(
       'li',
@@ -16,7 +16,10 @@ function resultRow(file, entry, error) {
       el('div', { className: 'info' }, el('div', { className: 'name', textContent: file.name }), el('div', { className: 'meta', textContent: error })),
     );
   }
-  const meta = el('div', { className: 'meta', textContent: `${plural(entry.tabs.length, 'tab')} · added to Saved` });
+  const meta = el('div', {
+    className: 'meta',
+    textContent: `${plural(entry.tabs.length, 'tab')} · ${replaced ? 'replaced its saved copy' : 'added to Saved'}`,
+  });
   const open = el('button', {
     className: 'btn',
     textContent: 'Open now',
@@ -43,8 +46,10 @@ async function importFiles(files) {
     let row;
     try {
       const entry = fromJson(await file.text());
-      await addSavedGroup(entry);
-      row = resultRow(file, entry);
+      // The same group is already open here, so the imported copy is a different group.
+      if (await isGroupOpen(entry.id)) entry.id = crypto.randomUUID();
+      const replaced = await addSavedGroup(entry);
+      row = resultRow(file, entry, null, replaced);
     } catch (err) {
       row = resultRow(file, null, err.message);
     }

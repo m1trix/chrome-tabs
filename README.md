@@ -23,6 +23,11 @@ coloring them, and saving groups to reopen later.
 - **Custom colors** – pick any of the 9 built-in colors or enter a custom hex color.
 - **Save & reopen** – save a group (optionally closing its tabs) and restore it later as a group in the current window.
   Reopening a saved group removes it from the saved list.
+- **Group UUIDs** – every group has a UUID that stays the same when it's saved, restored, exported and imported
+  (it's the `id` field in exported JSON). A UUID stands for one group: saving a group again, or importing a file
+  of a group that's already saved, replaces the saved copy. Restoring or importing a group that's still open
+  gives the new copy a fresh UUID. Open groups' UUIDs are kept in session storage, so after a browser restart
+  the reopened groups get new ones.
 
 ### About custom colors
 
@@ -53,7 +58,7 @@ manifest.json        MV3 manifest (permissions: tabs, tabGroups, storage, downlo
 background.js        Service worker: custom-color cleanup
 lib/colors.js        Native palette, nearest-color matching, hex helpers
 lib/groups.js        Group, save and restore logic
-lib/storage.js       Saved groups and rules (storage.local), live custom colors (storage.session)
+lib/storage.js       Saved groups and rules (storage.local), live custom colors and UUIDs (storage.session)
 lib/transfer.js      Group export/import as JSON
 lib/dom.js           Tiny element helper
 popup/               Toolbar popup (“This window” and “Saved” views)

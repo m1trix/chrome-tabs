@@ -1,8 +1,9 @@
 import { nearestNativeColor } from './lib/colors.js';
-import { getCustomColors, setCollapsed, setCustomColor } from './lib/storage.js';
+import { getCustomColors, setCollapsed, setCustomColor, setGroupUuid } from './lib/storage.js';
 
 chrome.tabGroups.onRemoved.addListener(async (group) => {
   await setCustomColor(group.id, null);
+  await setGroupUuid(group.id, null);
   await setCollapsed(`live:${group.id}`, false);
 });
 

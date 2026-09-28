@@ -471,12 +471,20 @@ function liveGroupCard(group, tabs, hex) {
         className: 'btn',
         textContent: 'Save',
         title: 'Save this group so you can reopen it later',
-        onclick: () => run(async () => flash(`Saved “${(await groups.saveLiveGroup(group.id)).title}”`)),
+        onclick: () =>
+          run(async () => {
+            const { entry, replaced } = await groups.saveLiveGroup(group.id);
+            flash(`Saved “${entry.title}”${replaced ? ', replacing its saved copy' : ''}`);
+          }),
       }),
       el('button', {
         className: 'btn primary',
         textContent: 'Save & close',
-        onclick: () => run(async () => flash(`Saved and closed “${(await groups.saveLiveGroup(group.id, { close: true })).title}”`)),
+        onclick: () =>
+          run(async () => {
+            const { entry, replaced } = await groups.saveLiveGroup(group.id, { close: true });
+            flash(`Saved and closed “${entry.title}”${replaced ? ', replacing its saved copy' : ''}`);
+          }),
       }),
     ),
   );
