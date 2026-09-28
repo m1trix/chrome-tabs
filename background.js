@@ -1,6 +1,6 @@
 import { nearestNativeColor } from './lib/colors.js';
-import { pinnedKey } from './lib/groups.js';
-import { getCustomColors, setCollapsed, setCustomColor, setGroupUuid } from './lib/storage.js';
+import { pinnedKey, refreshPinnedHomes, unpinTabs } from './lib/groups.js';
+import { getCustomColors, getPinnedHomes, setCollapsed, setCustomColor, setGroupUuid, updatePinnedHomes } from './lib/storage.js';
 
 chrome.tabGroups.onRemoved.addListener(async (group) => {
   await setCustomColor(group.id, null);
@@ -30,8 +30,22 @@ chrome.tabs.onUpdated.addListener((tabId, { pinned }, tab) => {
   if (pinned === false) forgetPinnedIfNone(tab.windowId);
 });
 
+// A tab pinned from a group remembers it (see pinTabs in lib/groups.js). Unpinning it from the tab
+// strip puts it back too; the extension's own unpinning has already forgotten the group by then.
+chrome.tabs.onUpdated.addListener(async (tabId, { pinned }) => {
+  if (pinned === false && (await getPinnedHomes())[tabId]) await unpinTabs([tabId]);
+});
+chrome.tabs.onRemoved.addListener(async (tabId) => {
+  if ((await getPinnedHomes())[tabId]) {
+    await updatePinnedHomes((homes) => {
+      delete homes[tabId];
+    });
+  }
+});
+
 // If the color is changed from the tab strip, the custom color no longer applies.
 chrome.tabGroups.onUpdated.addListener(async (group) => {
   const hex = (await getCustomColors())[group.id];
   if (hex && nearestNativeColor(hex) !== group.color) await setCustomColor(group.id, null);
+  await refreshPinnedHomes(group.id);
 });

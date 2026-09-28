@@ -94,7 +94,22 @@ function favicon(url) {
   return img;
 }
 
-function tabRow(tab, { selectable = false } = {}) {
+// Pins a tab, or unpins it back into the group it was pinned from (`home`, if any).
+function pinButton(tab, home) {
+  const back = home ? ` and move it back to “${home.title || 'Untitled group'}”` : '';
+  const b = el('button', {
+    type: 'button',
+    className: 'tab-pin',
+    textContent: PIN_MARK,
+    title: tab.pinned ? `Unpin tab${back}` : 'Pin tab',
+    onclick: () => run(() => (tab.pinned ? groups.unpinTabs([tab.id]) : groups.pinTabs([tab.id]))),
+  });
+  b.setAttribute('aria-pressed', tab.pinned);
+  return b;
+}
+
+// `pinnable` adds a pin/unpin button; `home` is the group a pinned tab would go back to.
+function tabRow(tab, { selectable = false, pinnable = false, home } = {}) {
   const label = el('span', { className: 'tab-title', textContent: tab.title || tab.url, title: tab.url });
   const row = selectable
     ? el('label', { className: 'tab-row' }, el('input', { type: 'checkbox', value: tab.id }), favicon(tab.favIconUrl), label)
@@ -107,7 +122,7 @@ function tabRow(tab, { selectable = false } = {}) {
     ariaLabel: `Close ${tab.title || tab.url}`,
     onclick: () => run(() => chrome.tabs.remove(tab.id)),
   });
-  const li = el('li', {}, row, close);
+  const li = el('li', {}, row, pinnable && pinButton(tab, home), close);
   li.dataset.tabId = tab.id;
   return li;
 }
@@ -422,7 +437,9 @@ const savedMerge = mergeMode($('#view-saved'), groups.mergeSavedGroups);
 
 // A card for a tab group, or for the window's pinned tabs when `group.id` is PINNED. The pinned
 // tabs' card works like a group's, except that its title and color are fixed and it stays first.
-function liveGroupCard(group, tabs, hex) {
+// Tabs pinned from a group are only listed with the pinned tabs; the group's card counts them
+// (`pinnedCount`), since they're saved and closed with it. `homes` maps tab ids to their home group.
+function liveGroupCard(group, tabs, hex, { pinnedCount = 0, homes = {} } = {}) {
   const isPinned = group.id === PINNED;
   const card = el('article', { className: isPinned ? 'card pinned' : 'card' });
   card.style.setProperty('--c', hex);
@@ -439,7 +456,7 @@ function liveGroupCard(group, tabs, hex) {
         onchange: () => chrome.tabGroups.update(group.id, { title: title.value }),
       });
   const grip = isPinned ? pinMark() : el('span', { className: 'grip', textContent: '⠿', title: 'Drag to reorder' });
-  const list = el('ul', { className: 'tab-list' }, ...tabs.map((t) => tabRow(t)));
+  const list = el('ul', { className: 'tab-list' }, ...tabs.map((t) => tabRow(t, { pinnable: true, home: homes[t.id] })));
   tabDropList(list, group.id);
   if (!isPinned) makeGroupDraggable(grip, card, group.id);
 
@@ -467,7 +484,7 @@ function liveGroupCard(group, tabs, hex) {
 
   const { toggle, body, expand } = collapsible(
     `live:${isPinned ? groups.pinnedKey(windowId) : group.id}`,
-    plural(tabs.length, 'tab'),
+    plural(tabs.length, 'tab') + (pinnedCount ? ` + ${pinnedCount} pinned` : ''),
     picker,
     list,
     el(
@@ -476,7 +493,8 @@ function liveGroupCard(group, tabs, hex) {
       el('button', {
         className: 'btn',
         textContent: isPinned ? 'Unpin' : 'Ungroup',
-        onclick: () => run(() => groups.moveTabs(tabs.map((t) => t.id), NONE)),
+        title: isPinned ? 'Unpin these tabs, moving tabs pinned from a group back to it' : undefined,
+        onclick: () => run(() => (isPinned ? groups.unpinTabs(tabs.map((t) => t.id)) : groups.ungroupGroup(group.id))),
       }),
       el('button', {
         className: 'btn',
@@ -511,10 +529,12 @@ function liveGroupCard(group, tabs, hex) {
 }
 
 async function renderCurrent() {
-  const [tabs, liveGroups, custom] = await Promise.all([
+  const [tabs, liveGroups, custom, uuids, homes] = await Promise.all([
     chrome.tabs.query({ windowId }),
     chrome.tabGroups.query({ windowId }),
     store.getCustomColors(),
+    store.getGroupUuids(),
+    store.getPinnedHomes(),
   ]);
 
   // Show groups in tab-strip order.
@@ -529,11 +549,17 @@ async function renderCurrent() {
   liveGroups.sort((a, b) => groupSpans.get(a.id).first - groupSpans.get(b.id).first);
   // Pinned tabs always sit at the start of the tab strip, so their card comes first.
   const pinned = tabs.filter((t) => t.pinned);
-  const pinnedCard = pinned.length > 0 && liveGroupCard({ id: PINNED, windowId }, pinned, groups.PINNED_COLOR);
+  const pinnedCard = pinned.length > 0 && liveGroupCard({ id: PINNED, windowId }, pinned, groups.PINNED_COLOR, { homes });
+  const homeCounts = new Map();
+  for (const t of pinned) if (homes[t.id]) homeCounts.set(homes[t.id].uuid, (homeCounts.get(homes[t.id].uuid) ?? 0) + 1);
   $('#groups').replaceChildren(
     ...[pinnedCard].filter(Boolean),
     ...(liveGroups.length
-      ? liveGroups.map((g) => liveGroupCard(g, tabs.filter((t) => t.groupId === g.id), groups.groupHex(g, custom)))
+      ? liveGroups.map((g) =>
+          liveGroupCard(g, tabs.filter((t) => t.groupId === g.id), groups.groupHex(g, custom), {
+            pinnedCount: homeCounts.get(uuids[g.id]) ?? 0,
+          }),
+        )
       : [el('p', { className: 'empty', textContent: 'No groups yet. Drag a tab from below to start one.' })]),
   );
   $('#pin-zone').classList.toggle('available', !pinnedCard);
@@ -610,6 +636,7 @@ function savedCard(entry) {
         { className: 'tab-row', onclick: () => chrome.tabs.create({ windowId, url: groups.urlForThisBrowser(t.url) }) },
         favicon(t.favIconUrl),
         el('span', { className: 'tab-title', textContent: t.title || t.url, title: t.url }),
+        t.pinned && !entry.pinned && el('span', { className: 'pin', textContent: PIN_MARK, title: 'Restored as a pinned tab' }),
       ),
     ),
   );

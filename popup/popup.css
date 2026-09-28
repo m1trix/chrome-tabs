@@ -104,6 +104,12 @@ button.dot:hover, button.dot[aria-expanded="true"] { box-shadow: 0 0 0 2px var(-
   border: 0; border-radius: 50%; background: none; color: var(--muted); font-size: 15px; line-height: 1;
 }
 .tab-close:hover { background: var(--hover); color: var(--fg); }
+.tab-pin {
+  flex: none; width: 20px; height: 20px; margin-left: 2px; padding: 0; cursor: pointer;
+  border: 0; border-radius: 50%; background: none; font-size: 11px; line-height: 1;
+}
+.tab-pin[aria-pressed="false"] { filter: grayscale(1); opacity: .35; }
+.tab-pin:hover { background: var(--hover); filter: none; opacity: 1; }
 .favicon { flex: none; width: 16px; height: 16px; }
 .tab-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
