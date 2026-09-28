@@ -504,11 +504,11 @@ function savedCard(entry) {
       }),
       el('button', {
         className: 'btn primary',
-        textContent: 'Open',
+        textContent: 'Restore',
         onclick: () =>
           run(async () => {
             const groupId = await groups.restoreSavedGroup(entry, windowId);
-            flash(groupId ? `Opened “${entry.title}”` : `Couldn't open any tabs from “${entry.title}”`);
+            flash(groupId ? `Restored “${entry.title}”` : `Couldn't restore any tabs from “${entry.title}”`);
           }),
       }),
     ),
