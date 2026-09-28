@@ -11,6 +11,8 @@ coloring them, and saving groups to reopen later.
 - **Reorder tabs** – drag a tab between rows of a group's tab list to put it at that spot (works for tabs
   from the same group, another group, or ungrouped tabs). Dropping elsewhere on a group adds tabs at the end.
 - **Reorder groups** – drag a group by its ⠿ handle to move the whole group; the browser's tab strip follows.
+- **Deduplicate** – merges groups with the same name (ignoring case) into the leftmost one and closes duplicate
+  tabs (same URL) in the window, keeping the active, pinned, or grouped copy. Untitled groups aren't merged.
 - **Custom colors** – pick any of the 9 built-in colors or enter a custom hex color.
 - **Save & reopen** – save a group (optionally closing its tabs) and restore it later as a group in the current window.
   Reopening a saved group removes it from the saved list.

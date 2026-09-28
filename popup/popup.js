@@ -393,6 +393,13 @@ async function renderCurrent() {
   updateNewGroupButton();
 }
 
+$('#dedupe').onclick = () =>
+  run(async () => {
+    const { merged, closed } = await groups.deduplicate(windowId);
+    const parts = [merged && `merged ${plural(merged, 'group')}`, closed && `closed ${plural(closed, 'duplicate tab')}`].filter(Boolean);
+    flash(parts.length ? parts.join(', ').replace(/^./, (c) => c.toUpperCase()) : 'No duplicates found');
+  });
+
 $('#new-group').onsubmit = (e) => {
   e.preventDefault();
   const tabIds = [...document.querySelectorAll('#ungrouped input:checked')].map((i) => Number(i.value));
