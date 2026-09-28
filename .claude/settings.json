@@ -1,8 +1,8 @@
 {
   "permissions": {
     "ask": [
-      "/bin/bash",
-      "git"
+      "Bash",
+      "Bash(git *)"
     ]
   }
 }
