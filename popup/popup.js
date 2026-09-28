@@ -454,8 +454,8 @@ function savedCard(entry) {
         textContent: 'Open',
         onclick: () =>
           run(async () => {
-            await groups.restoreSavedGroup(entry, windowId);
-            flash(`Opened “${entry.title}”`);
+            const groupId = await groups.restoreSavedGroup(entry, windowId);
+            flash(groupId ? `Opened “${entry.title}”` : `Couldn't open any tabs from “${entry.title}”`);
           }),
       }),
     ),

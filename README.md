@@ -13,6 +13,7 @@ coloring them, and saving groups to reopen later.
 - **Reorder groups** – drag a group by its ⠿ handle to move the whole group; the browser's tab strip follows.
 - **Custom colors** – pick any of the 9 built-in colors or enter a custom hex color.
 - **Save & reopen** – save a group (optionally closing its tabs) and restore it later as a group in the current window.
+  Reopening a saved group removes it from the saved list.
 
 ### About custom colors
 
