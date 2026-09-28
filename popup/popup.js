@@ -92,7 +92,9 @@ function tabRow(tab, { selectable = false } = {}) {
     ? el('label', {}, el('input', { type: 'checkbox', value: tab.id, onchange: updateNewGroupButton }), favicon(tab.favIconUrl), label)
     : el('button', { onclick: () => chrome.tabs.update(tab.id, { active: true }) }, favicon(tab.favIconUrl), label);
   makeDraggable(row, tab);
-  return el('li', {}, row);
+  const li = el('li', {}, row);
+  li.dataset.tabId = tab.id;
+  return li;
 }
 
 // Tab lists are always expanded unless the user collapses one; re-renders keep that choice.
@@ -162,6 +164,70 @@ function dropZone(node, groupId, onDrop) {
 
 dropZone($('#ungrouped-zone'), NONE, (tabIds) => chrome.tabs.ungroup(tabIds));
 dropZone($('#new-group-zone'), 'new', (tabIds) => groups.createGroup(tabIds, { windowId }));
+
+// ---- Drag and drop: drop tabs at a position inside a group's tab list ----
+
+// The group's tab ids after inserting `movingIds` before `beforeId` (null = at the end).
+function reorderedIds(currentIds, movingIds, beforeId) {
+  const rest = currentIds.filter((id) => !movingIds.includes(id));
+  rest.splice(beforeId == null ? rest.length : rest.indexOf(beforeId), 0, ...movingIds);
+  return rest;
+}
+
+// The row the dragged tabs would land before, skipping the dragged rows themselves; null = at the end.
+function tabInsertionPoint(list, y) {
+  const rows = [...list.children];
+  let i = rows.findIndex((r) => {
+    const rect = r.getBoundingClientRect();
+    return y < rect.top + rect.height / 2;
+  });
+  if (i === -1) return null;
+  while (i < rows.length && dragged.tabIds.includes(Number(rows[i].dataset.tabId))) i++;
+  return rows[i] ?? null;
+}
+
+function tabDropPlan(list, groupId, y) {
+  const before = tabInsertionPoint(list, y);
+  const beforeId = before ? Number(before.dataset.tabId) : null;
+  const currentIds = [...list.children].map((r) => Number(r.dataset.tabId));
+  const order = reorderedIds(currentIds, dragged.tabIds, beforeId);
+  const noop = dragged.groupId === groupId && order.every((id, i) => id === currentIds[i]);
+  return { before, beforeId, noop };
+}
+
+async function placeTabsInGroup(groupId, tabIds, fromGroupId, beforeId) {
+  if (fromGroupId !== groupId) await chrome.tabs.group({ groupId, tabIds });
+  const tabs = (await chrome.tabs.query({ groupId })).sort((a, b) => a.index - b.index);
+  const first = tabs[0].index;
+  // Moving tabs one by one, left to right, into their final slots keeps each move inside the group.
+  const order = reorderedIds(tabs.map((t) => t.id), tabIds, beforeId);
+  for (const [i, id] of order.entries()) await chrome.tabs.move(id, { index: first + i });
+}
+
+function tabDropList(list, groupId) {
+  list.addEventListener('dragover', (e) => {
+    if (!dragged) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    clearInsertMarkers();
+    const { before, noop } = tabDropPlan(list, groupId, e.clientY);
+    if (noop) return;
+    if (before) before.classList.add('insert-before');
+    else list.lastElementChild?.classList.add('insert-after');
+  });
+  list.addEventListener('dragleave', (e) => {
+    if (!list.contains(e.relatedTarget)) clearInsertMarkers();
+  });
+  list.addEventListener('drop', (e) => {
+    if (!dragged) return;
+    e.preventDefault();
+    e.stopPropagation(); // the card would otherwise append the tabs at the end
+    const { beforeId, noop } = tabDropPlan(list, groupId, e.clientY);
+    const { tabIds, groupId: fromGroupId } = dragged;
+    endDrag();
+    if (!noop) run(() => placeTabsInGroup(groupId, tabIds, fromGroupId, beforeId));
+  });
+}
 
 // ---- Drag and drop: reorder whole groups by their grip ----
 
@@ -247,12 +313,14 @@ function liveGroupCard(group, tabs, hex) {
     onchange: () => chrome.tabGroups.update(group.id, { title: title.value }),
   });
   const grip = el('span', { className: 'grip', textContent: '⠿', title: 'Drag to reorder' });
+  const liveTabList = tabList(`live:${group.id}`, plural(tabs.length, 'tab'), tabs.map((t) => tabRow(t)));
+  tabDropList(liveTabList.querySelector('ul'), group.id);
   makeGroupDraggable(grip, card, group.id);
 
   card.append(
     el('header', {}, grip, el('span', { className: 'dot' }), title),
     colorPicker(hex, (color) => run(() => groups.setGroupColor(group.id, color))),
-    tabList(`live:${group.id}`, plural(tabs.length, 'tab'), tabs.map((t) => tabRow(t))),
+    liveTabList,
     el(
       'div',
       { className: 'actions' },
