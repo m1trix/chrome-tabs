@@ -105,8 +105,9 @@ function tabRow(tab, { selectable = false } = {}) {
   return li;
 }
 
-// Group cards are always expanded unless the user collapses one; re-renders keep that choice.
-const collapsed = new Set();
+// Group cards are expanded unless the user collapses one. The choice is stored, so it
+// survives re-renders and reopening the popup (see setCollapsed in lib/storage.js).
+const collapsed = await store.getCollapsed();
 
 // Wraps everything below a card's header in a body that a header button collapses/expands.
 function collapsible(key, label, ...children) {
@@ -118,6 +119,7 @@ function collapsible(key, label, ...children) {
       body.hidden = !body.hidden;
       if (body.hidden) collapsed.add(key);
       else collapsed.delete(key);
+      store.setCollapsed(key, body.hidden);
       sync();
     },
   });
@@ -130,6 +132,7 @@ function collapsible(key, label, ...children) {
   const expand = () => {
     body.hidden = false;
     collapsed.delete(key);
+    store.setCollapsed(key, false);
     sync();
   };
   return { toggle, body, expand };
