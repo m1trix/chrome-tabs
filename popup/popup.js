@@ -2,12 +2,16 @@ import { NATIVE_COLORS, isNativeHex, nearestNativeColor, normalizeHex } from '..
 import { el } from '../lib/dom.js';
 import * as groups from '../lib/groups.js';
 import * as store from '../lib/storage.js';
+import { LAYOUTS, applyLayout, hasSidePanel } from '../lib/layout.js';
 import { downloadGroup } from '../lib/transfer.js';
 
 const $ = (sel) => document.querySelector(sel);
 const NONE = chrome.tabGroups.TAB_GROUP_ID_NONE;
 const { PINNED } = groups;
 const { id: windowId } = await chrome.windows.getCurrent();
+// The same page is shown in the toolbar popup and in the side panel (see lib/layout.js).
+const IS_PANEL = !chrome.extension.getViews({ type: 'popup' }).includes(window);
+document.body.classList.toggle('panel', IS_PANEL);
 
 let statusTimer;
 function flash(message) {
@@ -736,6 +740,58 @@ async function renderSaved() {
   savedMerge.update(new Map(saved.map((e) => [e.id, e.title])));
 }
 
+// ---- "Settings" view ----
+
+// A toggle between the layouts. Switching to the side panel opens it right away and closes the
+// popup; switching to the popup closes the side panels (see the end of this file). If switching
+// fails, the toggle goes back.
+function layoutToggle(current) {
+  const buttons = Object.entries(LAYOUTS).map(([layout, label]) => {
+    const b = el('button', { type: 'button', textContent: label, onclick: () => choose(layout) });
+    b.setAttribute('role', 'radio');
+    b.dataset.layout = layout;
+    return b;
+  });
+  const panelButton = buttons.find((b) => b.dataset.layout === 'panel');
+  if (!hasSidePanel()) {
+    current = 'popup';
+    panelButton.disabled = true;
+    panelButton.title = 'Side panels aren’t available. If you just updated the extension, reload it.';
+  }
+  const mark = () => {
+    for (const b of buttons) b.setAttribute('aria-checked', b.dataset.layout === current);
+  };
+  function choose(layout) {
+    if (layout === current) return;
+    const previous = current;
+    current = layout;
+    mark();
+    // run() starts this synchronously, so the side panel is opened during the click, as it must be.
+    run(async () => {
+      try {
+        const opening = layout === 'panel' && !IS_PANEL ? chrome.sidePanel.open({ windowId }) : null;
+        await applyLayout(layout);
+        await store.updateSettings({ layout });
+        if (opening) {
+          await opening;
+          window.close();
+        } else {
+          flash(`The toolbar icon now opens the ${LAYOUTS[layout]}`);
+        }
+      } catch (err) {
+        current = previous;
+        mark();
+        await applyLayout(previous).catch(() => {});
+        throw err;
+      }
+    });
+  }
+  mark();
+  $('#layout').replaceChildren(...buttons);
+}
+
+layoutToggle((await store.getSettings()).layout);
+
 // ---- Shell ----
 
 async function render() {
@@ -753,3 +809,24 @@ for (const tab of document.querySelectorAll('[role=tab]')) {
 }
 
 await render();
+
+// The side panel stays open while tabs change, so it follows the browser. Renders wait until the
+// user is done dragging or typing in a field, which a render would otherwise interrupt.
+if (IS_PANEL) {
+  let renderTimer;
+  const busy = () => dragged || draggedGroup != null || document.activeElement?.matches('#groups input');
+  const scheduleRender = () => {
+    clearTimeout(renderTimer);
+    renderTimer = setTimeout(() => (busy() ? scheduleRender() : render()), 150);
+  };
+  for (const event of ['onCreated', 'onRemoved', 'onUpdated', 'onMoved', 'onAttached', 'onDetached', 'onActivated']) {
+    chrome.tabs[event].addListener(scheduleRender);
+  }
+  for (const event of ['onCreated', 'onRemoved', 'onUpdated', 'onMoved']) chrome.tabGroups[event].addListener(scheduleRender);
+  chrome.storage.onChanged.addListener(scheduleRender);
+
+  // Switching to the popup, from this panel or another window's, closes every open side panel.
+  chrome.storage.onChanged.addListener(async (changes, area) => {
+    if (area === 'local' && changes.settings && (await store.getSettings()).layout !== 'panel') window.close();
+  });
+}

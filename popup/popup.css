@@ -114,6 +114,19 @@ button.dot:hover, button.dot[aria-expanded="true"] { box-shadow: 0 0 0 2px var(-
 .tab-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
 
+/* Settings */
+.setting { display: flex; align-items: center; gap: 10px; }
+.setting-name { font-weight: 600; }
+.segmented { display: inline-flex; border: 1px solid var(--border); border-radius: 6px; overflow: hidden; }
+.segmented button { padding: 4px 12px; cursor: pointer; border: 0; background: var(--bg); }
+.segmented button + button { border-left: 1px solid var(--border); }
+.segmented button:hover:not(:disabled) { background: var(--hover); }
+.segmented button:disabled { opacity: .5; cursor: default; }
+.segmented button[aria-checked="true"] { background: var(--accent); color: var(--on-accent); }
+
+/* In the side panel, the page fills the panel instead of the popup's fixed width. */
+body.panel { width: auto; }
+
 /* Merge mode */
 .merge[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); }
 .merge-pick { flex: none; margin: 0; cursor: pointer; accent-color: var(--accent); }

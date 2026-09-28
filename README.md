@@ -108,6 +108,13 @@ merging them into a group unpins them into it. Closed groups (whose tabs are all
 - **Import…** on the Saved view opens a page where you pick or drop exported files, which are added to your
   saved groups.
 
+### ⚙️ Settings
+
+- **Layout:** choose whether the toolbar icon opens the extension as a **Pop-Up** (the default) or in the
+  browser's **Side-Panel**. Switching to the side panel opens it right away, and switching back to the
+  popup closes it. The side panel stays open while you browse and follows changes to your tabs and groups as
+  they happen.
+
 ### 🪪 Every group has an identity
 
 Each group has a UUID that stays the same when it's saved, restored, exported and imported. It's the `id` field in
@@ -132,12 +139,13 @@ strip shows the closest built-in color. Changing a group's color from the tab st
 
 **Edge:** open `edge://extensions`, turn on **Developer mode**, click **Load unpacked**, and select this folder.
 
-Then click the extension's toolbar icon to open the popup, which has a **This window** view and a **Saved** view.
+Then click the extension's toolbar icon to open the popup, which has a **This window** view, a **Saved** view
+and a **Settings** view.
 
 ## Browser support
 
-Chrome or Edge **108 or later**. The extension uses only the Chromium extension APIs that both browsers share
-(`tabs`, `tabGroups`, `storage`, `windows`, `downloads`), so the same folder or zip works in either.
+Chrome or Edge **116 or later**. The extension uses only the Chromium extension APIs that both browsers share
+(`tabs`, `tabGroups`, `storage`, `windows`, `downloads`, `sidePanel`), so the same folder or zip works in either.
 
 Groups exported from one browser can be imported into the other. Internal pages (`chrome://…` / `edge://…`) are
 switched to the current browser's scheme when a group is restored. Internal pages that exist in only one browser
@@ -150,16 +158,17 @@ switched to the current browser's scheme when a group is restored. Internal page
 ### Project layout
 
 ```
-manifest.json        MV3 manifest (permissions: tabs, tabGroups, storage, downloads)
-background.js        Service worker: cleans up after closed groups, tracks pinned tabs' groups, returns tabs
+manifest.json        MV3 manifest (permissions: tabs, tabGroups, storage, downloads, sidePanel)
+background.js        Service worker: applies the layout setting, cleans up after closed groups, tracks pinned tabs' groups, returns tabs
                      unpinned from the tab strip to their group
 lib/colors.js        Native palette, nearest-color matching, hex helpers
 lib/groups.js        Group, pinning, merge, deduplicate, save and restore logic
-lib/storage.js       Saved groups (storage.local); live custom colors, UUIDs and pinned tabs' groups
-                     (storage.session); collapsed cards (both)
+lib/storage.js       Saved groups and settings (storage.local); live custom colors, UUIDs and pinned tabs'
+                     groups (storage.session); collapsed cards (both)
 lib/transfer.js      Group export/import as JSON
+lib/layout.js        Opens the extension as the toolbar popup or in the side panel
 lib/dom.js           Tiny element helper
-popup/               Toolbar popup (“This window” and “Saved” views)
+popup/               Toolbar popup and side panel (“This window”, “Saved” and “Settings” views)
 import/              Import page (file pickers can't live in the popup)
 icons/               icon.svg (source) and the PNGs generated from it
 scripts/             build-icons.mjs: regenerates the PNG icons from icon.svg
