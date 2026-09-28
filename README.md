@@ -33,6 +33,14 @@ the tab strip shows the closest built-in color. Changing a group's color from th
 
 After you edit files, click the reload icon on the extension card. To reopen the popup, close it and open it again.
 
+## Browser support
+
+The extension uses only Chromium extension APIs that Chrome and Edge share (`tabs`, `tabGroups`, `storage`,
+`windows`, `downloads`) and needs Chrome or Edge 108 or later. The same folder or zip works in both browsers,
+and groups exported from one can be imported into the other: internal pages (`chrome://…` / `edge://…`) are
+switched to the current browser's scheme when a group is restored. Internal pages that exist in only one browser
+(e.g. `edge://collections`) will not open in the other.
+
 ## Layout
 
 ```
@@ -50,7 +58,8 @@ icons/               Toolbar and store icons
 
 ## Packaging
 
-Zip the folder contents (without `.git`) to upload to the Chrome Web Store or Edge Add-ons:
+Zip the folder contents (without `.git`) to upload to the Chrome Web Store or
+[Microsoft Edge Add-ons](https://partner.microsoft.com/dashboard/microsoftedge/) (same zip for both):
 
 ```sh
 zip -r tab-groups-plus.zip . -x '.git/*' '*.DS_Store'

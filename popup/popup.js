@@ -480,7 +480,7 @@ function savedCard(entry) {
       {},
       el(
         'button',
-        { className: 'tab-row', onclick: () => chrome.tabs.create({ windowId, url: t.url }) },
+        { className: 'tab-row', onclick: () => chrome.tabs.create({ windowId, url: groups.urlForThisBrowser(t.url) }) },
         favicon(t.favIconUrl),
         el('span', { className: 'tab-title', textContent: t.title || t.url, title: t.url }),
       ),
