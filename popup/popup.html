@@ -10,6 +10,7 @@
     <nav class="views" role="tablist">
       <button role="tab" data-view="current" aria-selected="true">This window</button>
       <button role="tab" data-view="saved" aria-selected="false">Saved <span id="saved-count" class="count"></span></button>
+      <button role="tab" data-view="settings" aria-selected="false">Settings</button>
     </nav>
   </header>
 
@@ -46,6 +47,13 @@
       <span class="merge-summary"></span>
       <button class="btn merge-cancel">Cancel</button>
       <button class="btn primary merge-confirm" disabled>Merge</button>
+    </div>
+  </section>
+
+  <section id="view-settings" hidden>
+    <div class="setting">
+      <span id="layout-label" class="setting-name">Layout:</span>
+      <div id="layout" class="segmented" role="radiogroup" aria-labelledby="layout-label"></div>
     </div>
   </section>
 

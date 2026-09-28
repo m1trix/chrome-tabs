@@ -1,6 +1,11 @@
 import { nearestNativeColor } from './lib/colors.js';
 import { pinnedKey, refreshPinnedHomes, unpinTabs } from './lib/groups.js';
+import { applySavedLayout } from './lib/layout.js';
 import { getCustomColors, getPinnedHomes, setCollapsed, setCustomColor, setGroupUuid, updatePinnedHomes } from './lib/storage.js';
+
+// The popup (or side panel) that the toolbar icon opens isn't kept across restarts and updates.
+chrome.runtime.onInstalled.addListener(applySavedLayout);
+chrome.runtime.onStartup.addListener(applySavedLayout);
 
 chrome.tabGroups.onRemoved.addListener(async (group) => {
   await setCustomColor(group.id, null);
