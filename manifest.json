@@ -4,7 +4,7 @@
   "version": "0.1.0",
   "description": "Organize tabs into color-coded groups, save groups, and reopen them later.",
   "minimum_chrome_version": "108",
-  "permissions": ["tabs", "tabGroups", "storage"],
+  "permissions": ["tabs", "tabGroups", "storage", "downloads"],
   "background": {
     "service_worker": "background.js",
     "type": "module"

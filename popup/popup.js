@@ -2,6 +2,7 @@ import { NATIVE_COLORS, isNativeHex, nearestNativeColor, normalizeHex } from '..
 import { el } from '../lib/dom.js';
 import * as groups from '../lib/groups.js';
 import * as store from '../lib/storage.js';
+import { downloadGroup } from '../lib/transfer.js';
 
 const $ = (sel) => document.querySelector(sel);
 const NONE = chrome.tabGroups.TAB_GROUP_ID_NONE;
@@ -338,6 +339,12 @@ function liveGroupCard(group, tabs, hex) {
       }),
       el('button', {
         className: 'btn',
+        textContent: 'Export',
+        title: 'Download this group as a JSON file',
+        onclick: () => run(async () => downloadGroup((await groups.snapshotLiveGroup(group.id)).entry)),
+      }),
+      el('button', {
+        className: 'btn',
         textContent: 'Save',
         title: 'Save this group so you can reopen it later',
         onclick: () => run(async () => flash(`Saved “${(await groups.saveLiveGroup(group.id)).title}”`)),
@@ -400,6 +407,10 @@ $('#dedupe').onclick = () =>
     flash(parts.length ? parts.join(', ').replace(/^./, (c) => c.toUpperCase()) : 'No duplicates found');
   });
 
+for (const button of document.querySelectorAll('.import')) {
+  button.onclick = () => chrome.tabs.create({ url: chrome.runtime.getURL('import/import.html') });
+}
+
 $('#new-group').onsubmit = (e) => {
   e.preventDefault();
   const tabIds = [...document.querySelectorAll('#ungrouped input:checked')].map((i) => Number(i.value));
@@ -456,6 +467,12 @@ function savedCard(entry) {
       'div',
       { className: 'actions' },
       del,
+      el('button', {
+        className: 'btn',
+        textContent: 'Export',
+        title: 'Download this group as a JSON file',
+        onclick: () => run(() => downloadGroup(entry)),
+      }),
       el('button', {
         className: 'btn primary',
         textContent: 'Open',

@@ -1,0 +1,22 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Import tab groups – Tab Groups Plus</title>
+  <link rel="stylesheet" href="import.css">
+</head>
+<body>
+  <main>
+    <h1>Import tab groups</h1>
+    <p>Choose or drop group files exported from Tab Groups Plus. Each one is added to the <strong>Saved</strong> list in the popup.</p>
+
+    <label id="drop" class="drop">
+      <input id="file" type="file" accept=".json,application/json" multiple hidden>
+      <span><strong>Choose files</strong> or drop them here</span>
+    </label>
+
+    <ul id="results"></ul>
+  </main>
+  <script type="module" src="import.js"></script>
+</body>
+</html>

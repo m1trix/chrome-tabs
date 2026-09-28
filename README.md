@@ -13,6 +13,8 @@ coloring them, and saving groups to reopen later.
 - **Reorder groups** – drag a group by its ⠿ handle to move the whole group; the browser's tab strip follows.
 - **Deduplicate** – merges groups with the same name (ignoring case) into the leftmost one and closes duplicate
   tabs (same URL) in the window, keeping the active, pinned, or grouped copy. Untitled groups aren't merged.
+- **Export / import** – download any group (open or saved) as a JSON file with **Export**; **Import…** on the
+  Saved view opens a page where you pick or drop exported files, which are added to the saved groups.
 - **Custom colors** – pick any of the 9 built-in colors or enter a custom hex color.
 - **Save & reopen** – save a group (optionally closing its tabs) and restore it later as a group in the current window.
   Reopening a saved group removes it from the saved list.
@@ -34,13 +36,15 @@ After you edit files, click the reload icon on the extension card. To reopen the
 ## Layout
 
 ```
-manifest.json        MV3 manifest (permissions: tabs, tabGroups, storage)
+manifest.json        MV3 manifest (permissions: tabs, tabGroups, storage, downloads)
 background.js        Service worker: custom-color cleanup
 lib/colors.js        Native palette, nearest-color matching, hex helpers
 lib/groups.js        Group, save and restore logic
 lib/storage.js       Saved groups and rules (storage.local), live custom colors (storage.session)
+lib/transfer.js      Group export/import as JSON
 lib/dom.js           Tiny element helper
 popup/               Toolbar popup (“This window” and “Saved” views)
+import/              Import page (file pickers can't live in the popup)
 icons/               Toolbar and store icons
 ```
 
