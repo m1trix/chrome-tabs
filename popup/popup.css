@@ -69,6 +69,7 @@ h2 { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacin
 .dot { flex: none; width: 10px; height: 10px; border-radius: 50%; background: var(--c); }
 button.dot { width: 14px; height: 14px; padding: 0; border: 0; cursor: pointer; }
 button.dot:hover, button.dot[aria-expanded="true"] { box-shadow: 0 0 0 2px var(--card), 0 0 0 4px var(--c); }
+.pin { flex: none; font-size: 12px; line-height: 1; user-select: none; }
 .title { flex: 1; min-width: 0; padding: 2px 4px; border: 0; border-radius: 4px; background: transparent; font-weight: 600; }
 .meta { color: var(--muted); font-size: 12px; }
 .actions { display: flex; gap: 6px; justify-content: flex-end; margin-top: 6px; }
@@ -103,6 +104,12 @@ button.dot:hover, button.dot[aria-expanded="true"] { box-shadow: 0 0 0 2px var(-
   border: 0; border-radius: 50%; background: none; color: var(--muted); font-size: 15px; line-height: 1;
 }
 .tab-close:hover { background: var(--hover); color: var(--fg); }
+.tab-pin {
+  flex: none; width: 20px; height: 20px; margin-left: 2px; padding: 0; cursor: pointer;
+  border: 0; border-radius: 50%; background: none; font-size: 11px; line-height: 1;
+}
+.tab-pin[aria-pressed="false"] { filter: grayscale(1); opacity: .35; }
+.tab-pin:hover { background: var(--hover); filter: none; opacity: 1; }
 .favicon { flex: none; width: 16px; height: 16px; }
 .tab-title { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
@@ -159,3 +166,7 @@ body.dragging #new-group-zone { display: block; }
 }
 .tab-list li.insert-before::before { top: -1px; }
 .tab-list li.insert-after::after { bottom: -1px; }
+
+/* A group the browser closed because all its tabs are pinned */
+.card.closed-group { border-style: dashed; }
+.card p.meta { margin: 4px 0; }

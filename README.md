@@ -9,6 +9,10 @@
   A Chrome and Edge extension · Manifest V3 · plain JavaScript, no build step
 </p>
 
+> [!NOTE]
+> **Disclaimer:** this extension is entirely vibe-coded. Its code was written by an AI coding assistant from
+> natural-language instructions, and it hasn't been reviewed line by line. Use it at your own risk.
+
 ---
 
 ## Why Tab Groups++?
@@ -23,6 +27,7 @@ groups to reopen later, even in the other browser.
 | 🎨 **Any color you like** | The 9 built-in colors, or any hex color you choose |
 | 🧹 **One-click cleanup** | Merge same-named groups and close duplicate tabs |
 | 🔗 **Merge on demand** | Tick a few groups and combine them into one |
+| 📌 **Pinned tabs as a group** | Pin a tab from its card and unpin it back into the group it came from |
 | 💾 **Save for later** | Save a group, close its tabs, and restore it whenever you need it |
 | 📦 **Take it with you** | Export groups as JSON and import them in Chrome or Edge |
 
@@ -40,10 +45,37 @@ groups to reopen later, even in the other browser.
   the same group, another group or the ungrouped list. Dropping anywhere else on a group adds the tab at the end.
 - **Reorder groups:** drag a group by its ⠿ handle, and the browser's tab strip follows.
 
+### 📌 Pinned tabs
+
+The window's pinned tabs are shown as a group of their own, always first and marked with 📌. It can be collapsed
+and merged like any other group, but its title can't be changed, it's always grey, and it can't be saved or exported
+on its own: pinned tabs are saved with the group they were pinned from.
+
+- **Pin and unpin:** every tab in a group, and every ungrouped tab, has a 📌 button. Tabs are only pinned this way,
+  not by dragging.
+- **Pinned tabs remember their group:** the browser can't keep a pinned tab in a group, but the extension remembers
+  where it came from. The popup lists the tab both with the pinned tabs and in its group (first, marked 📌).
+- **Unpinning puts it back:** unpinning a tab with its 📌 button, with **Unpin** on the pinned tabs, or from the
+  browser's tab strip moves it back to the end of its group.
+- **Ungrouped tabs** work like a special group: a tab pinned from them is also listed under "Ungrouped tabs", and
+  unpinning returns it there. They can't be saved or exported.
+- **Closed groups:** if all of a group's tabs are pinned, the browser closes the group, but its card stays, with a
+  dashed border, after the other groups. It can still be renamed, recolored, saved, exported and ungrouped, but not
+  reordered or merged. Unpinning one of its tabs, or dropping a tab on it, reopens the group with its name, color
+  and UUID.
+- **Dragging pinned tabs:** drag them within the pinned tabs to reorder them, or onto a group or "Ungrouped tabs"
+  to unpin them there instead of back to their own group.
+- **Saving:** a group's pinned tabs are saved, exported and closed (**Save & close**) along with it. They're marked
+  with 📌 on the Saved view and `"pinned": true` in exported JSON, and restoring the group, from the Saved view or
+  an imported file, pins them again. **Ungroup** leaves them pinned, and they no longer go back to the group.
+- A group that is only *named* "Pinned tabs" stays an ordinary group: it has no 📌, and Deduplicate never merges
+  it with the pinned tabs.
+
 ### 🧹 Deduplicate
 
 - **In this window:** groups with the same name (ignoring case) are merged into the leftmost one, and duplicate
-  tabs (same URL) are closed. The active, pinned or grouped copy is the one kept.
+  tabs (same URL) are closed. The active, pinned or grouped copy is the one kept, and pinned tabs are never
+  closed.
 - **In your saved groups:** same-named saved groups are merged into the most recently saved one, and repeated
   URLs within each saved group are removed.
 - Untitled groups are never merged.
@@ -57,15 +89,20 @@ groups to reopen later, even in the other browser.
 Every ticked group's tabs move into the target. This works the same way on the Saved view, where the other
 saved groups are removed once their tabs are added to the target.
 
+The pinned tabs can be merged too. Merging a group into them pins its tabs, which still remember the group, and
+merging them into a group unpins them into it. Closed groups (whose tabs are all pinned) can't be merged.
+
 ### 💾 Save and restore
 
 - **Save** a group to keep it for later, or use **Save & close** to also close its tabs.
-- **Restore** brings it back as a group in the current window and removes it from the saved list.
+- **Restore** brings it back as a group in the current window, with its pinned tabs pinned again, and removes it
+  from the saved list.
 - Collapsed cards stay collapsed the next time you open the popup.
 
 ### 📦 Export and import
 
-- **Export** downloads any group, open or saved, as a JSON file.
+- **Export** downloads any group, open or saved, as a JSON file. The pinned tabs are exported with their groups,
+  not on their own.
 - **Import…** on the Saved view opens a page where you pick or drop exported files, which are added to your
   saved groups.
 
@@ -112,10 +149,12 @@ switched to the current browser's scheme when a group is restored. Internal page
 
 ```
 manifest.json        MV3 manifest (permissions: tabs, tabGroups, storage, downloads)
-background.js        Service worker: custom-color cleanup
+background.js        Service worker: cleans up after closed groups, tracks pinned tabs' groups, returns tabs
+                     unpinned from the tab strip to their group
 lib/colors.js        Native palette, nearest-color matching, hex helpers
-lib/groups.js        Group, save and restore logic
-lib/storage.js       Saved groups and rules (storage.local), live custom colors and UUIDs (storage.session)
+lib/groups.js        Group, pinning, merge, deduplicate, save and restore logic
+lib/storage.js       Saved groups (storage.local); live custom colors, UUIDs and pinned tabs' groups
+                     (storage.session); collapsed cards (both)
 lib/transfer.js      Group export/import as JSON
 lib/dom.js           Tiny element helper
 popup/               Toolbar popup (“This window” and “Saved” views)
