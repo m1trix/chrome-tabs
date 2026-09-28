@@ -1,0 +1,33 @@
+{
+  "manifest_version": 3,
+  "name": "Tab Groups Plus",
+  "version": "0.1.0",
+  "description": "Organize tabs into color-coded groups, save groups, and reopen them later.",
+  "minimum_chrome_version": "108",
+  "permissions": ["tabs", "tabGroups", "storage"],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "action": {
+    "default_title": "Tab Groups Plus",
+    "default_popup": "popup/popup.html",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "options_page": "options/options.html",
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "commands": {
+    "group-by-domain": {
+      "suggested_key": { "default": "Alt+Shift+G" },
+      "description": "Group tabs in the current window by domain"
+    }
+  }
+}

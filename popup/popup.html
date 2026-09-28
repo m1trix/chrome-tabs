@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Tab Groups Plus</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <header>
+    <nav class="views" role="tablist">
+      <button role="tab" data-view="current" aria-selected="true">This window</button>
+      <button role="tab" data-view="saved" aria-selected="false">Saved <span id="saved-count" class="count"></span></button>
+    </nav>
+    <button id="open-options" class="icon-btn" title="Domain rules">⚙</button>
+  </header>
+
+  <section id="view-current">
+    <div class="toolbar">
+      <button id="auto-group" class="btn primary">Group by domain</button>
+    </div>
+    <div id="groups"></div>
+
+    <h2>Ungrouped tabs</h2>
+    <ul id="ungrouped" class="tab-list"></ul>
+    <form id="new-group">
+      <input id="new-group-title" class="text" placeholder="New group name" autocomplete="off">
+      <div id="new-group-color"></div>
+      <button type="submit" class="btn primary" disabled>Group selected</button>
+    </form>
+  </section>
+
+  <section id="view-saved" hidden>
+    <div id="saved"></div>
+  </section>
+
+  <p id="status" role="status"></p>
+  <script type="module" src="popup.js"></script>
+</body>
+</html>
