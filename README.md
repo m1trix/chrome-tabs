@@ -103,8 +103,8 @@ merging them into a group unpins them into it. Closed groups (whose tabs are all
 
 ### 📦 Export and import
 
-- **Export** downloads any group, open or saved, as a JSON file. The pinned tabs are exported with their groups,
-  not on their own.
+- **Export** downloads any group, open or saved, as a JSON file named `<group-name>.group.json`. The pinned tabs
+  are exported with their groups, not on their own.
 - **Import…** on the Saved view opens a page where you pick or drop exported files, which are added to your
   saved groups.
 
