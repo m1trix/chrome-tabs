@@ -506,29 +506,30 @@ function liveGroupCard(group, tabs, hex, { homes = {} } = {}) {
           : 'Ungroup these tabs. Pinned ones stay pinned and no longer go back to this group.',
         onclick: () => run(() => (isPinned ? groups.unpinTabs(tabs.map((t) => t.id)) : groups.ungroupGroup(group.id))),
       }),
-      el('button', {
+      // Pinned tabs are saved and exported with the groups they were pinned from, not on their own.
+      !isPinned && el('button', {
         className: 'btn',
         textContent: 'Export',
         title: 'Download this group as a JSON file',
         onclick: () => run(async () => downloadGroup((await groups.snapshotLiveGroup(group.id, windowId)).entry)),
       }),
-      el('button', {
+      !isPinned && el('button', {
         className: 'btn',
         textContent: 'Save',
         title: 'Save this group so you can reopen it later',
         onclick: () =>
           run(async () => {
             const { entry, replaced } = await groups.saveLiveGroup(group.id, windowId);
-            flash(`Saved “${displayTitle(entry.title, entry.pinned)}”${replaced ? ', replacing its saved copy' : ''}`);
+            flash(`Saved “${entry.title}”${replaced ? ', replacing its saved copy' : ''}`);
           }),
       }),
-      el('button', {
+      !isPinned && el('button', {
         className: 'btn primary',
         textContent: 'Save & close',
         onclick: () =>
           run(async () => {
             const { entry, replaced } = await groups.saveLiveGroup(group.id, windowId, { close: true });
-            flash(`Saved and closed “${displayTitle(entry.title, entry.pinned)}”${replaced ? ', replacing its saved copy' : ''}`);
+            flash(`Saved and closed “${entry.title}”${replaced ? ', replacing its saved copy' : ''}`);
           }),
       }),
     ),
@@ -635,8 +636,8 @@ for (const button of document.querySelectorAll('.import')) {
 // ---- "Saved" view ----
 
 function savedCard(entry) {
-  const card = el('article', { className: entry.pinned ? 'card pinned' : 'card' });
-  card.style.setProperty('--c', entry.pinned ? groups.PINNED_COLOR : entry.color);
+  const card = el('article', { className: 'card' });
+  card.style.setProperty('--c', entry.color);
   card.dataset.mergeId = entry.id;
 
   let confirmTimer;
@@ -664,7 +665,7 @@ function savedCard(entry) {
         { className: 'tab-row', onclick: () => chrome.tabs.create({ windowId, url: groups.urlForThisBrowser(t.url) }) },
         favicon(t.favIconUrl),
         el('span', { className: 'tab-title', textContent: t.title || t.url, title: t.url }),
-        t.pinned && !entry.pinned && el('span', { className: 'pin', textContent: PIN_MARK, title: 'Restored as a pinned tab' }),
+        t.pinned && el('span', { className: 'pin', textContent: PIN_MARK, title: 'Restored as a pinned tab' }),
       ),
     ),
   );
@@ -690,8 +691,7 @@ function savedCard(entry) {
         onclick: () =>
           run(async () => {
             const groupId = await groups.restoreSavedGroup(entry, windowId);
-            const what = displayTitle(entry.title, entry.pinned);
-            flash(groupId ? `Restored “${what}”` : `Couldn't restore any tabs from “${what}”`);
+            flash(groupId ? `Restored “${entry.title}”` : `Couldn't restore any tabs from “${entry.title}”`);
           }),
       }),
     ),
@@ -702,7 +702,7 @@ function savedCard(entry) {
       'header',
       {},
       savedMerge.on && savedMerge.checkbox(entry.id),
-      entry.pinned ? pinMark() : el('span', { className: 'dot' }),
+      el('span', { className: 'dot' }),
       el('h3', { textContent: entry.title }),
       toggle,
     ),
@@ -719,7 +719,7 @@ async function renderSaved() {
       ? saved.map(savedCard)
       : [el('p', { className: 'empty', textContent: 'No saved groups yet. Use “Save” on a group to keep it for later.' })]),
   );
-  savedMerge.update(new Map(saved.map((e) => [e.id, displayTitle(e.title, e.pinned)])));
+  savedMerge.update(new Map(saved.map((e) => [e.id, e.title])));
 }
 
 // ---- Shell ----

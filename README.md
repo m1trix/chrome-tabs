@@ -42,8 +42,9 @@ groups to reopen later, even in the other browser.
 
 ### 📌 Pinned tabs
 
-The window's pinned tabs are shown as a group of their own, always first. It is marked with 📌 and can be collapsed,
-merged, saved, exported and restored like any other group. Its title can't be changed, and it's always grey.
+The window's pinned tabs are shown as a group of their own, always first. It is marked with 📌 and can be collapsed and
+merged like any other group. Its title can't be changed, it's always grey, and it can't be saved or exported on its
+own: pinned tabs are saved with the group they were pinned from.
 
 - Every tab in a group has a 📌 button that pins it. The browser can't keep a pinned tab in a group, but the
   extension remembers where it came from, so the popup lists the tab both with the pinned tabs and in its group
@@ -57,8 +58,8 @@ merged, saved, exported and restored like any other group. Its title can't be ch
 - Dropping a tab on the pinned tabs pins it the same way. Dropping a pinned tab on a group or on "Ungrouped tabs"
   moves it there instead of back to its group. When the window has no pinned tabs, a "Drop here to pin" zone
   appears while you drag.
-- In saved and exported groups, each pinned tab is marked with `"pinned": true`. Saved and exported pinned tabs
-  are restored as pinned tabs, alongside any the window already has.
+- In saved and exported groups, each pinned tab is marked with `"pinned": true` (and with 📌 on the Saved view).
+  Restoring the group, from the Saved view or from an imported file, pins those tabs again.
 - A group that is only *named* "Pinned tabs" stays an ordinary group: it has no 📌, and Deduplicate never merges
   it with the pinned tabs.
 

@@ -8,12 +8,10 @@ chrome.tabGroups.onRemoved.addListener(async (group) => {
   await setCollapsed(`live:${group.id}`, false);
 });
 
-// A window's pinned tabs are stored like a group keyed by the window (see PINNED in lib/groups.js).
+// A window's pinned tabs are shown like a group keyed by the window (see PINNED in lib/groups.js).
 // Like a group that loses its last tab, they're forgotten once the window has no pinned tabs left.
 async function forgetPinned(windowId) {
-  const key = pinnedKey(windowId);
-  await setGroupUuid(key, null);
-  await setCollapsed(`live:${key}`, false);
+  await setCollapsed(`live:${pinnedKey(windowId)}`, false);
 }
 
 async function forgetPinnedIfNone(windowId) {
