@@ -88,18 +88,83 @@ function favicon(url) {
 
 function tabRow(tab, { selectable = false } = {}) {
   const label = el('span', { className: 'tab-title', textContent: tab.title || tab.url, title: tab.url });
-  if (selectable) {
-    const checkbox = el('input', { type: 'checkbox', value: tab.id, onchange: updateNewGroupButton });
-    return el('li', {}, el('label', {}, checkbox, favicon(tab.favIconUrl), label));
-  }
-  return el('li', {}, el('button', { onclick: () => chrome.tabs.update(tab.id, { active: true }) }, favicon(tab.favIconUrl), label));
+  const row = selectable
+    ? el('label', {}, el('input', { type: 'checkbox', value: tab.id, onchange: updateNewGroupButton }), favicon(tab.favIconUrl), label)
+    : el('button', { onclick: () => chrome.tabs.update(tab.id, { active: true }) }, favicon(tab.favIconUrl), label);
+  makeDraggable(row, tab);
+  return el('li', {}, row);
 }
+
+// Tab lists are always expanded unless the user collapses one; re-renders keep that choice.
+const collapsed = new Set();
+
+function tabList(key, summary, rows) {
+  const details = el(
+    'details',
+    {
+      open: !collapsed.has(key),
+      ontoggle: () => (details.open ? collapsed.delete(key) : collapsed.add(key)),
+    },
+    el('summary', { textContent: summary }),
+    el('ul', { className: 'tab-list' }, ...rows),
+  );
+  return details;
+}
+
+// ---- Drag and drop: move tabs into, out of, and between groups ----
+
+let dragged = null; // { tabIds, groupId } while a drag is in progress
+
+function endDrag() {
+  dragged = null;
+  document.body.classList.remove('dragging');
+  for (const n of document.querySelectorAll('.drop-target')) n.classList.remove('drop-target');
+}
+
+function makeDraggable(node, tab) {
+  node.draggable = true;
+  node.addEventListener('dragstart', (e) => {
+    // Dragging a checked ungrouped tab carries every checked tab along with it.
+    const checked = [...document.querySelectorAll('#ungrouped input:checked')].map((i) => Number(i.value));
+    const tabIds = tab.groupId === NONE && checked.includes(tab.id) ? checked : [tab.id];
+    dragged = { tabIds, groupId: tab.groupId };
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', tab.url ?? '');
+    // Changing layout synchronously in dragstart can cancel the drag in Chrome.
+    requestAnimationFrame(() => dragged && document.body.classList.add('dragging'));
+  });
+  // The source row may already be re-rendered away by the time this fires; drop cleans up too.
+  node.addEventListener('dragend', endDrag);
+}
+
+// `groupId` is the group the zone represents; dropping tabs back where they came from is ignored.
+function dropZone(node, groupId, onDrop) {
+  node.addEventListener('dragover', (e) => {
+    if (!dragged || dragged.groupId === groupId) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    node.classList.add('drop-target');
+  });
+  node.addEventListener('dragleave', (e) => {
+    if (!node.contains(e.relatedTarget)) node.classList.remove('drop-target');
+  });
+  node.addEventListener('drop', (e) => {
+    e.preventDefault();
+    const { tabIds } = dragged;
+    endDrag();
+    run(() => onDrop(tabIds));
+  });
+}
+
+dropZone($('#ungrouped-zone'), NONE, (tabIds) => chrome.tabs.ungroup(tabIds));
+dropZone($('#new-group-zone'), 'new', (tabIds) => groups.createGroup(tabIds, { windowId }));
 
 // ---- "This window" view ----
 
 function liveGroupCard(group, tabs, hex) {
   const card = el('article', { className: 'card' });
   card.style.setProperty('--c', hex);
+  dropZone(card, group.id, (tabIds) => chrome.tabs.group({ groupId: group.id, tabIds }));
 
   const title = el('input', {
     className: 'title',
@@ -111,7 +176,7 @@ function liveGroupCard(group, tabs, hex) {
   card.append(
     el('header', {}, el('span', { className: 'dot' }), title),
     colorPicker(hex, (color) => run(() => groups.setGroupColor(group.id, color))),
-    el('details', {}, el('summary', { textContent: plural(tabs.length, 'tab') }), el('ul', { className: 'tab-list' }, ...tabs.map((t) => tabRow(t)))),
+    tabList(`live:${group.id}`, plural(tabs.length, 'tab'), tabs.map((t) => tabRow(t))),
     el(
       'div',
       { className: 'actions' },
@@ -158,7 +223,7 @@ async function renderCurrent() {
   $('#groups').replaceChildren(
     ...(liveGroups.length
       ? liveGroups.map((g) => liveGroupCard(g, tabs.filter((t) => t.groupId === g.id), groups.groupHex(g, custom)))
-      : [el('p', { className: 'empty', textContent: 'No groups in this window yet.' })]),
+      : [el('p', { className: 'empty', textContent: 'No groups yet. Drag a tab to start one, or select tabs below.' })]),
   );
 
   const ungrouped = tabs.filter((t) => t.groupId === NONE && !t.pinned);
@@ -228,7 +293,7 @@ function savedCard(entry) {
       className: 'meta',
       textContent: `${plural(entry.tabs.length, 'tab')} · saved ${new Date(entry.savedAt).toLocaleString()}`,
     }),
-    el('details', {}, el('summary', { textContent: 'Show tabs' }), el('ul', { className: 'tab-list' }, ...tabs)),
+    tabList(`saved:${entry.id}`, 'Tabs', tabs),
     el(
       'div',
       { className: 'actions' },
