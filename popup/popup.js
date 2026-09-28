@@ -571,7 +571,9 @@ async function renderCurrent() {
     pinnedByHome.get(home.uuid).tabs.push(t);
   }
   const openUuids = new Set(allGroups.map((g) => uuids[g.id]));
-  const closedHomes = [...pinnedByHome.values()].filter(({ home }) => !openUuids.has(home.uuid));
+  const closedHomes = [...pinnedByHome.values()].filter(
+    ({ home }) => home.uuid !== groups.UNGROUPED_HOME.uuid && !openUuids.has(home.uuid),
+  );
   const groupCardsNow = [
     ...liveGroups.map((g) =>
       liveGroupCard(
@@ -599,10 +601,14 @@ async function renderCurrent() {
     ]),
   );
 
-  const ungrouped = tabs.filter((t) => t.groupId === NONE && !t.pinned);
+  // Tabs pinned from the ungrouped tabs are listed with them too, first (see UNGROUPED_HOME).
+  const ungrouped = [
+    ...(pinnedByHome.get(groups.UNGROUPED_HOME.uuid)?.tabs ?? []),
+    ...tabs.filter((t) => t.groupId === NONE && !t.pinned),
+  ];
   $('#ungrouped').replaceChildren(
     ...(ungrouped.length
-      ? ungrouped.map((t) => tabRow(t, { selectable: true }))
+      ? ungrouped.map((t) => tabRow(t, { selectable: !t.pinned, pinnable: true, home: homes[t.id] }))
       : [el('li', { className: 'empty', textContent: 'Every tab is in a group.' })]),
   );
 

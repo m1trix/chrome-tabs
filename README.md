@@ -50,6 +50,9 @@ own: pinned tabs are saved with the group they were pinned from.
   extension remembers where it came from, so the popup lists the tab both with the pinned tabs and in its group
   (first, marked 📌). Unpinning it, with its 📌 button, **Unpin**, or from the tab strip, moves it back to the end
   of that group.
+- Ungrouped tabs have a 📌 button too. The ungrouped tabs work like a special group: a tab pinned from them is
+  listed both with the pinned tabs and under "Ungrouped tabs", and unpinning it returns it there. They can't be
+  saved or exported.
 - If all of a group's tabs are pinned, the browser closes the group, but its card stays (with a dashed border) and
   can still be renamed, recolored, saved and exported. Unpinning one of its tabs, or dropping a tab on it, reopens
   the group with its name and color.
