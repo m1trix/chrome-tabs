@@ -58,9 +58,8 @@ own: pinned tabs are saved with the group they were pinned from.
   the group with its name and color.
 - A group's pinned tabs are saved, exported and closed (**Save & close**) along with it, and restored pinned.
   **Ungroup** leaves them pinned, and they no longer go back to the group.
-- Dropping a tab on the pinned tabs pins it the same way. Dropping a pinned tab on a group or on "Ungrouped tabs"
-  moves it there instead of back to its group. When the window has no pinned tabs, a "Drop here to pin" zone
-  appears while you drag.
+- Tabs are only pinned with their 📌 button. Pinned tabs can be dragged to reorder them, or onto a group or
+  "Ungrouped tabs" to unpin them there instead of back to their group.
 - In saved and exported groups, each pinned tab is marked with `"pinned": true` (and with 📌 on the Saved view).
   Restoring the group, from the Saved view or from an imported file, pins those tabs again.
 - A group that is only *named* "Pinned tabs" stays an ordinary group: it has no 📌, and Deduplicate never merges

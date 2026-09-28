@@ -214,8 +214,6 @@ function dropZone(node, groupId, onDrop) {
 }
 
 dropZone($('#ungrouped-zone'), NONE, (tabIds) => groups.moveTabs(tabIds, NONE));
-// Shown while dragging when the window has no pinned tabs, so there's no pinned card to drop on.
-dropZone($('#pin-zone'), PINNED, (tabIds) => groups.moveTabs(tabIds, PINNED));
 // A new group starts untitled, so its name field gets focus once it's rendered.
 let focusGroupId = null;
 dropZone($('#new-group-zone'), 'new', async (tabIds) => {
@@ -263,9 +261,13 @@ async function placeTabsInGroup(groupId, tabIds, fromGroupId, beforeId) {
   for (const [i, id] of order.entries()) await chrome.tabs.move(id, { index: first + i });
 }
 
+// Tabs are only pinned with their 📌 button, so the pinned tabs' list only takes its own tabs back
+// (to reorder them).
+const accepts = (groupId) => dragged && (groupId !== PINNED || dragged.groupId === PINNED);
+
 function tabDropList(list, groupId) {
   list.addEventListener('dragover', (e) => {
-    if (!dragged) return;
+    if (!accepts(groupId)) return;
     e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
     clearInsertMarkers();
@@ -278,7 +280,7 @@ function tabDropList(list, groupId) {
     if (!list.contains(e.relatedTarget)) clearInsertMarkers();
   });
   list.addEventListener('drop', (e) => {
-    if (!dragged) return;
+    if (!accepts(groupId)) return;
     e.preventDefault();
     e.stopPropagation(); // the card would otherwise append the tabs at the end
     const { beforeId, noop } = tabDropPlan(list, groupId, e.clientY);
@@ -450,7 +452,7 @@ function liveGroupCard(group, tabs, hex, { homes = {} } = {}) {
   card.style.setProperty('--c', hex);
   card.dataset.groupId = group.id;
   card.dataset.mergeId = group.id;
-  dropZone(card, group.id, (tabIds) => groups.moveTabs(tabIds, group.id));
+  if (!isPinned) dropZone(card, group.id, (tabIds) => groups.moveTabs(tabIds, group.id));
 
   const title = isPinned
     ? el('h3', { className: 'title', textContent: groups.PINNED_TITLE })
@@ -593,7 +595,6 @@ async function renderCurrent() {
       ? groupCardsNow
       : [el('p', { className: 'empty', textContent: 'No groups yet. Drag a tab from below to start one.' })]),
   );
-  $('#pin-zone').classList.toggle('available', !pinnedCard);
   liveMerge.update(
     new Map([
       ...(pinnedCard ? [[PINNED, displayTitle(groups.PINNED_TITLE, true)]] : []),
